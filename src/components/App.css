@@ -1,0 +1,15 @@
+/**
+ * App Component Styles
+ * Phase 2.1: Root application styling
+ */
+
+.chess-app {
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--color-primary-cream);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  overflow: hidden;
+}

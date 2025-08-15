@@ -1,0 +1,121 @@
+/* Global CSS Reset and Base Styles */
+
+:root {
+  /* Color Theme from Requirements */
+  --deep-walnut-brown: #3E2723;
+  --warm-cream: #FFF8E1;
+  --burnt-amber: #F28C28;
+  --muted-gold: #D4AF37;
+  --sage-green: #7CB342;
+  --dusty-rose: #C67171;
+  
+  /* Board Colors */
+  --light-square: #F0D9B5;
+  --dark-square: #B58863;
+  
+  /* Typography */
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  
+  color-scheme: light;
+  color: var(--deep-walnut-brown);
+  background-color: var(--warm-cream);
+  
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--warm-cream);
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--deep-walnut-brown);
+  font-weight: 600;
+}
+
+a {
+  color: var(--burnt-amber);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--muted-gold);
+}
+
+/* Button Base Styles */
+button {
+  border-radius: 4px;
+  border: 2px solid var(--deep-walnut-brown);
+  padding: 0.6em 1.2em;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: var(--deep-walnut-brown);
+  color: var(--burnt-amber);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  background-color: var(--muted-gold);
+  color: var(--deep-walnut-brown);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+button:focus,
+button:focus-visible {
+  outline: 2px solid var(--burnt-amber);
+  outline-offset: 2px;
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Utility Classes */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Loading Animation */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.loading {
+  animation: spin 1s linear infinite;
+}

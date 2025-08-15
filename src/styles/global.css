@@ -1,0 +1,102 @@
+/**
+ * Global CSS for Chess Application
+ * Phase 2.1: Basic styling and CSS variables
+ */
+
+:root {
+  /* Primary Colors */
+  --color-primary-brown: #3E2723;
+  --color-primary-cream: #FFF8E1;
+  --color-primary-amber: #F28C28;
+  
+  /* Accent Colors */
+  --color-accent-gold: #D4AF37;
+  --color-accent-green: #7CB342;
+  --color-accent-rose: #C67171;
+  
+  /* Board Colors */
+  --color-board-light: #F0D9B5;
+  --color-board-dark: #B58863;
+  
+  /* Feedback Colors */
+  --color-valid-move: #5FA4E8;
+  --color-check: #FF6B6B;
+  --color-last-move: #F4E04D;
+  --color-selected: #7CB342;
+  
+  /* Hover state */
+  --color-hover: #D4AF37;
+  
+  /* Typography */
+  --font-family: 'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-size-button: 14px;
+  --font-size-coordinates: 12px;
+  --font-size-status: 16px;
+  --font-weight-bold: bold;
+  
+  /* Layout */
+  --board-size: min(80vh, 80vw);
+  --square-size: calc(var(--board-size) / 8);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--color-primary-cream);
+  color: var(--color-primary-brown);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Primary background utility class */
+.primary-bg {
+  background-color: var(--color-primary-brown);
+  color: var(--color-primary-cream);
+}
+
+/* Button base styles */
+button {
+  font-family: var(--font-family);
+  font-size: var(--font-size-button);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary-amber);
+  background-color: var(--color-primary-brown);
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  background-color: var(--color-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+button.positive-action {
+  background-color: var(--color-accent-green);
+  color: white;
+}
+
+button.negative-action {
+  background-color: var(--color-accent-rose);
+  color: white;
+}
+
+/* Responsive container */
+.responsive-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}

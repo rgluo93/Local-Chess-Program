@@ -1,0 +1,21 @@
+/**
+ * GameContainer Component Styles
+ * Phase 2.1: Layout for game components
+ */
+
+.game-container {
+  display: flex;
+  gap: 20px;
+  max-width: 1200px;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+}

@@ -1,0 +1,77 @@
+/**
+ * GameControls Component Styles
+ * Phase 2.1: Button styling and layout
+ */
+
+.game-controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 10px;
+  background-color: rgba(62, 39, 35, 0.1);
+  border-radius: 8px;
+}
+
+.game-controls button {
+  min-width: 100px;
+  font-size: var(--font-size-button);
+  font-weight: var(--font-weight-bold);
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.game-controls button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.game-controls button span {
+  display: inline-block;
+  color: var(--color-primary-amber);
+}
+
+.game-controls button.positive-action {
+  background-color: var(--color-accent-green);
+}
+
+.game-controls button.positive-action span {
+  color: white;
+}
+
+.game-controls button.negative-action {
+  background-color: var(--color-accent-rose);
+}
+
+.game-controls button.negative-action span {
+  color: white;
+}
+
+.game-controls button.primary-bg {
+  background-color: var(--color-primary-brown);
+}
+
+.game-controls button.primary-bg span {
+  color: var(--color-primary-amber);
+}
+
+/* Disabled button styles */
+.game-controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.game-controls button:disabled:hover {
+  transform: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.game-controls button:disabled span {
+  color: #888;
+}

@@ -1,0 +1,113 @@
+/**
+ * MoveHistoryPanel Component Styles
+ * Phase 2.1: Move history panel styling
+ */
+
+.move-history-panel {
+  background-color: white;
+  border: 2px solid var(--color-primary-brown);
+  border-radius: 8px;
+  padding: 20px;
+  min-width: 250px;
+  max-width: 300px;
+  height: 600px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.panel-title {
+  font-size: var(--font-size-status);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary-brown);
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--color-primary-brown);
+}
+
+.moves-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 0;
+}
+
+.no-moves {
+  color: #999;
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}
+
+.move-pair {
+  display: flex;
+  padding: 5px 10px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  align-items: center;
+}
+
+.move-pair:hover {
+  background-color: rgba(62, 39, 35, 0.1);
+}
+
+.move-number {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary-brown);
+  margin-right: 10px;
+  min-width: 30px;
+}
+
+.white-move {
+  color: var(--color-primary-brown);
+  font-family: 'Courier New', monospace;
+  margin-right: 15px;
+  min-width: 60px;
+}
+
+.black-move {
+  color: var(--color-primary-brown);
+  font-family: 'Courier New', monospace;
+}
+
+/* Scrollbar styling */
+.moves-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.moves-list::-webkit-scrollbar-track {
+  background: rgba(62, 39, 35, 0.1);
+  border-radius: 4px;
+}
+
+.moves-list::-webkit-scrollbar-thumb {
+  background: var(--color-primary-brown);
+  border-radius: 4px;
+}
+
+.moves-list::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent-gold);
+}
+
+/* Game status styling */
+.game-status {
+  border-top: 2px solid var(--color-primary-brown);
+  padding-top: 15px;
+  margin-top: 15px;
+}
+
+.status-item {
+  font-size: var(--font-size-status);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary-brown);
+  margin-bottom: 8px;
+}
+
+.result-display {
+  background-color: var(--color-accent-gold);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  text-align: center;
+  margin-top: 10px;
+  font-weight: var(--font-weight-bold);
+}

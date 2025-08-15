@@ -1,0 +1,13 @@
+/**
+ * CanvasChessBoard Component Styles
+ * Phase 2.2: Canvas-based board styling
+ */
+
+.canvas-chess-board {
+  display: block;
+  border: 2px solid var(--color-primary-brown);
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  background-color: var(--color-primary-cream);
+  cursor: pointer;
+}

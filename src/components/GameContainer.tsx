@@ -129,7 +129,7 @@ const GameContainer: React.FC = () => {
         resigningPlayer = 'white'; // Human always plays white
       } else {
         // Human vs Human mode: resign whoever's turn it is
-        resigningPlayer = gameState?.currentPlayer === 'w' ? 'white' : 'black';
+        resigningPlayer = gameState?.currentPlayer === 'white' ? 'white' : 'black';
       }
       
       const resignResult = await orchestrator.resignGame(resigningPlayer);
@@ -166,7 +166,7 @@ const GameContainer: React.FC = () => {
     const triggerAIMove = async () => {
       if (gameMode === GameMode.HUMAN_VS_AI && gameState && 
           gameState.currentPlayer === 'black' && 
-          gameState.status === 'playing') {
+          (gameState.status === 'playing' || gameState.status === 'check')) {
         try {
           setIsAIThinking(true);
           setAIEngineStatus('thinking');

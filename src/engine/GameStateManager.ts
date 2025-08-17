@@ -7,6 +7,7 @@
  */
 
 import { GameEngine } from './GameEngine';
+import { NotationGenerator } from './NotationGenerator';
 import type {
   Square,
   PieceColor,
@@ -50,6 +51,7 @@ const CURRENT_VERSION = '1.0.0';
 
 export class GameStateManager {
   private _gameEngine: GameEngine;
+  private notationGenerator: NotationGenerator;
   private appState: AppState;
   private options: GameStateManagerOptions;
   private autoSaveTimer?: NodeJS.Timeout;
@@ -97,6 +99,7 @@ export class GameStateManager {
       this.expectedEngineId = this.gameEngine.getInstanceId(); // Track our own ID
     }
     
+    this.notationGenerator = new NotationGenerator();
     this.appState = this.initializeAppState();
     
     this.loadState();
@@ -476,10 +479,11 @@ export class GameStateManager {
   // =============================================================================
 
   private createGameStateFromEngine(): GameState {
+    const moves = this.gameEngine.getMoveHistory();
     const gameState = {
       fen: this.gameEngine.getFEN(),
-      pgn: this.gameEngine.getPGN(),
-      moves: this.gameEngine.getMoveHistory(),
+      pgn: this.notationGenerator.generatePGN(moves),
+      moves,
       currentPlayer: this.gameEngine.getCurrentPlayer(),
       status: this.gameEngine.getGameStatus(),
       result: this.determineGameResult(),
@@ -611,7 +615,7 @@ export class GameStateManager {
 
     if (this.getGameMode() === 'HUMAN_VS_AI') {
       // In human vs AI, AI plays as black
-      return currentGame.currentPlayer === 'b';
+      return currentGame.currentPlayer === 'black';
     }
 
     if (this.getGameMode() === 'AI_VS_AI') {

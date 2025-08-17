@@ -482,7 +482,7 @@ export class GameStateManager {
     const moves = this.gameEngine.getMoveHistory();
     const gameState = {
       fen: this.gameEngine.getFEN(),
-      pgn: this.notationGenerator.generatePGN(moves),
+      pgn: this.generatePGNFromMoves(moves),
       moves,
       currentPlayer: this.gameEngine.getCurrentPlayer(),
       status: this.gameEngine.getGameStatus(),
@@ -525,6 +525,49 @@ export class GameStateManager {
     if (this.stateHistory.length > this.maxHistorySize) {
       this.stateHistory = this.stateHistory.slice(0, this.maxHistorySize);
     }
+  }
+
+  /**
+   * Generate PGN using the existing move notation from moves.
+   * This ensures that the PGN matches exactly what's displayed in the Move History panel.
+   */
+  private generatePGNFromMoves(moves: Move[]): string {
+    if (moves.length === 0) {
+      return '*';
+    }
+
+    let pgn = '';
+    for (let i = 0; i < moves.length; i++) {
+      const move = moves[i];
+      const moveNumber = Math.floor(i / 2) + 1;
+      const isWhiteMove = i % 2 === 0;
+
+      // Add move number for white moves
+      if (isWhiteMove) {
+        pgn += `${moveNumber}. `;
+      }
+
+      // Add the move notation (already correctly formatted from chess.js)
+      pgn += move.notation;
+
+      // Add space between moves (except for the last move)
+      if (i < moves.length - 1) {
+        pgn += ' ';
+      }
+    }
+
+    // Add game result
+    let result = '*';
+    const gameResult = this.determineGameResult();
+    if (gameResult === 'white_wins') {
+      result = '1-0';
+    } else if (gameResult === 'black_wins') {
+      result = '0-1';
+    } else if (gameResult === 'draw') {
+      result = '1/2-1/2';
+    }
+
+    return pgn + (pgn ? ' ' : '') + result;
   }
 
   private generateGameId(): string {

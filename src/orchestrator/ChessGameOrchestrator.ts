@@ -426,7 +426,7 @@ export class ChessGameOrchestrator implements ChessGameOrchestratorAPI {
         timestamp: new Date(),
         source: 'orchestrator',
         moveCount: this.moveHistory.getTotalMoves(),
-        pgn: this.notationGenerator.generatePGN(this.moveHistory.getAllMoves().map(entry => entry.move)),
+        pgn: this.generatePGNFromMoveHistory(),
       };
       
       await this.eventManager.emitEvent(historyEvent);
@@ -616,7 +616,7 @@ export class ChessGameOrchestrator implements ChessGameOrchestratorAPI {
     
     switch (format) {
       case 'pgn':
-        return this.notationGenerator.generatePGN(this.moveHistory.getAllMoves().map(entry => entry.move));
+        return this.generatePGNFromMoveHistory();
       case 'fen':
         return this.gameEngine.getFEN();
       case 'algebraic':
@@ -1331,7 +1331,7 @@ export class ChessGameOrchestrator implements ChessGameOrchestratorAPI {
 
     if (query?.includeNotation) {
       response.notation = {
-        pgn: this.notationGenerator.generatePGN(this.moveHistory.getAllMoves().map(entry => entry.move)),
+        pgn: this.generatePGNFromMoveHistory(),
         fen: this.gameEngine.getFEN(),
       };
     }
@@ -1527,5 +1527,53 @@ export class ChessGameOrchestrator implements ChessGameOrchestratorAPI {
       await this.handleError(error as Error, 'initializeAI');
       throw error;
     }
+  }
+
+  // =============================================================================
+  // PRIVATE HELPER METHODS
+  // =============================================================================
+
+  /**
+   * Generate PGN using the existing move notation from the Move History panel.
+   * This ensures that the PGN matches exactly what's displayed in the UI.
+   */
+  private generatePGNFromMoveHistory(): string {
+    const moves = this.moveHistory.getAllMoves().map(entry => entry.move);
+    if (moves.length === 0) {
+      return '*';
+    }
+
+    let pgn = '';
+    for (let i = 0; i < moves.length; i++) {
+      const move = moves[i];
+      const moveNumber = Math.floor(i / 2) + 1;
+      const isWhiteMove = i % 2 === 0;
+
+      // Add move number for white moves
+      if (isWhiteMove) {
+        pgn += `${moveNumber}. `;
+      }
+
+      // Add the move notation (already correctly formatted from chess.js)
+      pgn += move.notation;
+
+      // Add space between moves (except for the last move)
+      if (i < moves.length - 1) {
+        pgn += ' ';
+      }
+    }
+
+    // Add game result
+    const gameState = this.getGameState();
+    let result = '*';
+    if (gameState.result === 'white_wins' || gameState.result === '1-0') {
+      result = '1-0';
+    } else if (gameState.result === 'black_wins' || gameState.result === '0-1') {
+      result = '0-1';
+    } else if (gameState.result === 'draw' || gameState.result === '1/2-1/2') {
+      result = '1/2-1/2';
+    }
+
+    return pgn + (pgn ? ' ' : '') + result;
   }
 }

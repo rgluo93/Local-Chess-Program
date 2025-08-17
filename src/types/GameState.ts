@@ -6,6 +6,7 @@
  */
 
 import { GameState, Move, PieceColor, Square, GameStatus, GameResult, ChessBoard, SavedGame } from './Chess';
+import type { GameMode, ThinkingMove } from '../ai/types/AITypes';
 
 // =============================================================================
 // APPLICATION STATE
@@ -28,6 +29,17 @@ export interface UIState {
   showCoordinates: boolean;
   animationSpeed: AnimationSpeed;
   modalState: ModalState;
+  gameMode: GameMode;
+  aiState: AIUIState;
+}
+
+export interface AIUIState {
+  isThinking: boolean;
+  thinkingMoves: ThinkingMove[];
+  thinkingStartTime: Date | null;
+  showCandidateArrows: boolean;
+  lastAIMoveTime: number | null;
+  engineStatus: 'ready' | 'thinking' | 'error' | 'offline';
 }
 
 export interface HighlightedSquares {
@@ -153,6 +165,20 @@ export interface GameplaySettings {
   moveNotation: 'algebraic' | 'descriptive';
   showThreats: boolean;
   highlightChecks: boolean;
+  ai: AIGameplaySettings;
+}
+
+export interface AIGameplaySettings {
+  enabled: boolean;
+  defaultTimeLimit: number; // milliseconds
+  showThinkingArrows: boolean;
+  showEngineEvaluation: boolean;
+  autoPlayMode: boolean;
+  engineOptions: {
+    multiPV: number;
+    depth?: number;
+    timeLimit?: number;
+  };
 }
 
 export interface PerformanceSettings {
@@ -321,6 +347,15 @@ export const DEFAULT_UI_STATE: UIState = {
     saveGameModal: null,
     loadGameModal: null,
     settingsModal: null
+  },
+  gameMode: 'HUMAN_VS_HUMAN' as GameMode,
+  aiState: {
+    isThinking: false,
+    thinkingMoves: [],
+    thinkingStartTime: null,
+    showCandidateArrows: true,
+    lastAIMoveTime: null,
+    engineStatus: 'offline'
   }
 };
 
@@ -346,7 +381,18 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     soundEffects: false,
     moveNotation: 'algebraic',
     showThreats: false,
-    highlightChecks: true
+    highlightChecks: true,
+    ai: {
+      enabled: true,
+      defaultTimeLimit: 3000,
+      showThinkingArrows: true,
+      showEngineEvaluation: false,
+      autoPlayMode: false,
+      engineOptions: {
+        multiPV: 3,
+        timeLimit: 3000
+      }
+    }
   },
   performance: {
     enableAnimations: true,

@@ -14,7 +14,7 @@ import type {
   Move,
   SavedGame,
   GameState,
-} from '@/types/Chess';
+} from '../types/Chess';
 import type {
   AppState,
   GameStorage,
@@ -23,7 +23,7 @@ import type {
   StateValidationResult,
   ValidationError,
   ValidationWarning,
-} from '@/types/GameState';
+} from '../types/GameState';
 
 export interface SerializationOptions {
   compress?: boolean;

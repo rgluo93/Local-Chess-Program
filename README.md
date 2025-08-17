@@ -1,9 +1,9 @@
 # Local Chess Program
 
-A fully offline chess application supporting human-vs-human gameplay with a rich visual interface. Built with TypeScript, React, and Canvas for smooth 60fps animations and responsive design.
+A fully offline chess application supporting both human-vs-human and human-vs-AI gameplay with a rich visual interface. Built with TypeScript, React, Canvas, and Stockfish chess engine for smooth 60fps animations and responsive design.
 
-**Current Status:** Phase 2 Complete + Phase 3 Partially Complete ✅  
-**Progress:** 50% (10/19 subphases completed - Full Chess Rules Implementation)
+**Current Status:** Phase 2 Complete - Ready for Phase 3 (AI Integration) ✅  
+**Progress:** 17% (5/30 subphases completed - Adding Stockfish AI Integration)
 
 ## Features
 
@@ -35,29 +35,28 @@ A fully offline chess application supporting human-vs-human gameplay with a rich
 - Full GameStateManager integration
 - 60fps performance optimization
 
-🟢 **Complete Chess Rules** (Phase 3 🟡 Partially Complete)
-- All special moves via Chess.js integration:
-  - Castling (kingside and queenside) ✅
-  - En passant capture ✅
-  - Pawn promotion to queen ✅ (UI dialog needed for other pieces)
-- Real-time game status and turn indicators ✅
-- Check highlighting with visual feedback ✅
-- Proper algebraic notation (O-O, O-O-O, e.p., =Q) ✅
-- Missing: Drag-and-drop, promotion UI, special move animations
+🔲 **Stockfish AI Integration** (Phase 3 - In Progress)
+- Stockfish chess engine integration for singleplayer mode
+- Human vs AI gameplay with full-strength engine
+- AI thinking visualization with candidate move arrows
+- Game mode selection (Human vs Human / Human vs AI)
+- Asynchronous AI move processing without UI blocking
+- Auto-play mode for AI vs AI testing
 
-🔲 **Advanced Interactions** (Phase 3.1 - Next)
+🔲 **Advanced Interactions** (Phase 4 - Upcoming)
 - Drag-and-drop piece movement with smooth animations
 - Pawn promotion piece selection dialog
 - Special move animations (castling, en passant)
+- Complete chess rules implementation with UI polish
 
-🔲 **Advanced Features** (Phase 4-5 - Upcoming)
+🔲 **Advanced Features** (Phase 5-6 - Upcoming)
 - Zoom functionality (384px-1024px board scaling)
 - Responsive design with 60fps real-time window resizing
 - Save/load games with LocalStorage persistence
 - PGN and FEN export functionality
 - **Complete component integration and state coordination**
 
-🔲 **Game Management** (Phase 5 - Upcoming)
+🔲 **Game Management** (Phase 6 - Upcoming)
 - Complete move history with replay navigation (✅ backend ready)
 - Resignation and draw handling
 - Checkmate, stalemate, and draw condition detection (✅ backend ready)
@@ -75,6 +74,7 @@ A fully offline chess application supporting human-vs-human gameplay with a rich
 - **Node.js** (v16 or higher)
 - **npm** (v8 or higher)
 - Modern web browser (Chrome, Firefox, Safari, Edge)
+- WebAssembly support for Stockfish engine
 
 ### Installation & Setup
 
@@ -122,6 +122,10 @@ ChessProgram/
 │   │   ├── MoveHistoryManager.ts # Enhanced move tracking ✅
 │   │   ├── EndgameDetector.ts # Comprehensive endgame detection ✅
 │   │   └── NotationGenerator.ts # Complete notation system ✅
+│   ├── ai/                 # AI engine integration (Phase 3)
+│   │   ├── StockfishEngine.ts # Stockfish wrapper and UCI communication
+│   │   ├── AIPlayer.ts     # AI player abstraction layer
+│   │   └── EngineSettings.ts # AI configuration and options
 │   ├── types/              # TypeScript interfaces
 │   │   ├── GameState.ts    # Core game state interfaces
 │   │   ├── Chess.ts        # Chess-specific types
@@ -165,12 +169,13 @@ ChessProgram/
 
 ### Test Scenarios
 
-The application includes 20 comprehensive test scenarios covering:
+The application includes 30 comprehensive test scenarios covering:
 
 - **Core Chess Logic** (Tests 1-8): Basic moves, special moves, illegal move handling
 - **Game Endings** (Tests 9-12): Checkmate, stalemate, draws, resignation  
 - **UI Interactions** (Tests 14-18): Animations, zoom, responsive design
 - **System Requirements** (Tests 19-20): Offline functionality, performance
+- **AI Integration** (Tests 26-30): Stockfish engine, AI vs human gameplay, thinking visualization
 
 ### Running Tests
 
@@ -210,6 +215,7 @@ For visual and interaction testing, refer to `IMPLEMENTATION_PLAN.md` for the co
 | Feature | Chrome | Firefox | Safari | Edge |
 |---------|--------|---------|--------|------|
 | Canvas Rendering | ✅ | ✅ | ✅ | ✅ |
+| Stockfish AI (WebAssembly) | ✅ | ✅ | ✅ | ✅ |
 | Drag & Drop | ✅ | ✅ | ✅ | ✅ |
 | LocalStorage | ✅ | ✅ | ✅ | ✅ |
 | CSS Animations | ✅ | ✅ | ✅ | ✅ |

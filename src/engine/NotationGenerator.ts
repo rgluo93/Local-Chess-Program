@@ -16,7 +16,7 @@ import type {
   PieceType,
   GameStatus,
   GameResult,
-} from '@/types/Chess';
+} from '../types/Chess';
 
 export interface PGNHeaders {
   Event?: string;

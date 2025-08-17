@@ -14,7 +14,7 @@ import type {
   GameStatus,
   GameResult,
   SavedGame,
-} from '@/types/Chess';
+} from '../types/Chess';
 import type {
   AppState,
   UIState,
@@ -23,11 +23,13 @@ import type {
   StateValidationResult,
   ValidationError,
   ValidationWarning,
-} from '@/types/GameState';
+  AIUIState,
+} from '../types/GameState';
+import type { GameMode, ThinkingMove } from '../ai/types/AITypes';
 import {
   DEFAULT_UI_STATE,
   DEFAULT_APP_SETTINGS,
-} from '@/types/GameState';
+} from '../types/GameState';
 
 export interface GameStateManagerOptions {
   enableAutoSave?: boolean;
@@ -47,12 +49,33 @@ const STORAGE_KEY = 'chess-program-state';
 const CURRENT_VERSION = '1.0.0';
 
 export class GameStateManager {
-  private gameEngine: GameEngine;
+  private _gameEngine: GameEngine;
   private appState: AppState;
   private options: GameStateManagerOptions;
   private autoSaveTimer?: NodeJS.Timeout;
   private stateHistory: GameStateSnapshot[] = [];
   private maxHistorySize = 50;
+  private externalEngine: boolean; // Track if external GameEngine was provided
+  private expectedEngineId?: string; // Track the expected engine ID
+
+  // Getter/setter to trap when gameEngine reference changes
+  private get gameEngine(): GameEngine {
+    return this._gameEngine;
+  }
+
+  private set gameEngine(value: GameEngine) {
+    const oldId = this._gameEngine?.getInstanceId();
+    const newId = value?.getInstanceId();
+    
+    if (this.expectedEngineId && newId !== this.expectedEngineId) {
+      console.error('[StateManager] CRITICAL: GameEngine reference changed unexpectedly!');
+      console.error('[StateManager] Expected ID:', this.expectedEngineId);
+      console.error('[StateManager] Old ID:', oldId);
+      console.error('[StateManager] New ID:', newId);
+    }
+    
+    this._gameEngine = value;
+  }
 
   constructor(gameEngine?: GameEngine, options: GameStateManagerOptions = {}) {
     this.options = {
@@ -63,7 +86,17 @@ export class GameStateManager {
       ...options,
     };
 
-    this.gameEngine = gameEngine || new GameEngine();
+    // Track if an external GameEngine was provided
+    this.externalEngine = !!gameEngine;
+    
+    if (gameEngine) {
+      this.expectedEngineId = gameEngine.getInstanceId(); // Track the expected ID
+      this.gameEngine = gameEngine;
+    } else {
+      this.gameEngine = new GameEngine();
+      this.expectedEngineId = this.gameEngine.getInstanceId(); // Track our own ID
+    }
+    
     this.appState = this.initializeAppState();
     
     this.loadState();
@@ -88,8 +121,8 @@ export class GameStateManager {
   // =============================================================================
 
   public startNewGame(): void {
-    // Always create a fresh game engine for a new game
-    this.gameEngine = new GameEngine();
+    // Reset the existing game engine to starting position instead of creating a new one
+    this.gameEngine.reset();
     this.appState.currentGame = this.createGameStateFromEngine();
     this.updateUIState({ selectedSquare: null, validMoves: [] });
     this.saveSnapshot();
@@ -101,6 +134,7 @@ export class GameStateManager {
     
     if (result.isValid) {
       this.appState.currentGame = this.createGameStateFromEngine();
+      
       this.updateUIState({
         selectedSquare: null,
         validMoves: [],
@@ -257,6 +291,12 @@ export class GameStateManager {
   }
 
   public loadGame(gameId: string): boolean {
+    // If external engine provided, don't allow loading games as it would break synchronization
+    if (this.externalEngine) {
+      console.error('[StateManager] BLOCKED: loadGame() called with external GameEngine - this would break synchronization!');
+      return false;
+    }
+
     const savedGame = this.appState.gameHistory.find(game => game.id === gameId);
     if (!savedGame) return false;
 
@@ -266,6 +306,7 @@ export class GameStateManager {
       // Replay moves to restore engine state
       const moves = savedGame.gameState.moves;
       this.gameEngine = new GameEngine(); // Start fresh
+      
       for (const move of moves) {
         this.gameEngine.makeMove(move.from, move.to, move.promotion);
       }
@@ -376,17 +417,28 @@ export class GameStateManager {
   }
 
   private loadState(): void {
-    if (typeof window === 'undefined' || !window.localStorage) return;
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return;
+    }
+
+    // If external engine provided, NEVER load from localStorage to avoid corruption
+    if (this.externalEngine) {
+      return;
+    }
 
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (!stored) return;
+      if (!stored) {
+        return;
+      }
 
       const gameStorage: GameStorage & { uiState?: UIState } = JSON.parse(stored, this.dateReviver);
       
       if (this.options.enableStateValidation) {
         // Basic validation
-        if (!gameStorage || typeof gameStorage !== 'object') return;
+        if (!gameStorage || typeof gameStorage !== 'object') {
+          return;
+        }
       }
 
       this.appState.currentGame = gameStorage.currentGame;
@@ -400,10 +452,16 @@ export class GameStateManager {
 
       // Restore game engine if there's a current game
       if (this.appState.currentGame) {
-        try {
-          this.gameEngine = new GameEngine(this.appState.currentGame.fen);
-        } catch (error) {
-          console.error('Failed to restore game engine:', error);
+        if (!this.externalEngine) {
+          // No external engine provided, create our own and load the saved position
+          try {
+            this.gameEngine = new GameEngine(this.appState.currentGame.fen);
+          } catch (error) {
+            console.error('Failed to restore game engine:', error);
+            this.appState.currentGame = null;
+          }
+        } else {
+          // External engine provided, don't override it but clear any saved game to start fresh
           this.appState.currentGame = null;
         }
       }
@@ -418,7 +476,7 @@ export class GameStateManager {
   // =============================================================================
 
   private createGameStateFromEngine(): GameState {
-    return {
+    const gameState = {
       fen: this.gameEngine.getFEN(),
       pgn: this.gameEngine.getPGN(),
       moves: this.gameEngine.getMoveHistory(),
@@ -429,6 +487,8 @@ export class GameStateManager {
       endDate: this.gameEngine.isGameOver() ? new Date() : undefined,
       board: this.gameEngine.getBoard(),
     };
+    
+    return gameState;
   }
 
   private determineGameResult(): GameResult {
@@ -491,6 +551,97 @@ export class GameStateManager {
 
   // =============================================================================
   // CLEANUP
+  // =============================================================================
+
+  // =============================================================================
+  // AI GAME MODE MANAGEMENT
+  // =============================================================================
+
+  public setGameMode(mode: GameMode): void {
+    this.updateUIState({
+      gameMode: mode,
+      aiState: {
+        ...this.appState.uiState.aiState,
+        engineStatus: mode === 'HUMAN_VS_HUMAN' ? 'offline' : 'ready'
+      }
+    });
+    this.persistState();
+  }
+
+  public getGameMode(): GameMode {
+    return this.appState.uiState.gameMode;
+  }
+
+  public setAIThinking(isThinking: boolean): void {
+    this.updateUIState({
+      aiState: {
+        ...this.appState.uiState.aiState,
+        isThinking,
+        thinkingStartTime: isThinking ? new Date() : null,
+        engineStatus: isThinking ? 'thinking' : 'ready'
+      }
+    });
+    this.persistState();
+  }
+
+  public setAIThinkingMoves(thinkingMoves: ThinkingMove[]): void {
+    this.updateUIState({
+      aiState: {
+        ...this.appState.uiState.aiState,
+        thinkingMoves
+      }
+    });
+  }
+
+  public setAIEngineStatus(status: 'ready' | 'thinking' | 'error' | 'offline'): void {
+    this.updateUIState({
+      aiState: {
+        ...this.appState.uiState.aiState,
+        engineStatus: status
+      }
+    });
+    this.persistState();
+  }
+
+  public isAITurn(): boolean {
+    const currentGame = this.getCurrentGame();
+    if (!currentGame || this.getGameMode() === 'HUMAN_VS_HUMAN') {
+      return false;
+    }
+
+    if (this.getGameMode() === 'HUMAN_VS_AI') {
+      // In human vs AI, AI plays as black
+      return currentGame.currentPlayer === 'b';
+    }
+
+    if (this.getGameMode() === 'AI_VS_AI') {
+      // For testing - AI plays both sides
+      return true;
+    }
+
+    return false;
+  }
+
+  public getAIState(): AIUIState {
+    return this.appState.uiState.aiState;
+  }
+
+  public recordAIMove(moveTime: number): void {
+    this.updateUIState({
+      aiState: {
+        ...this.appState.uiState.aiState,
+        lastAIMoveTime: moveTime,
+        thinkingMoves: [],
+        thinkingStartTime: null,
+        isThinking: false,
+        engineStatus: 'ready'
+      }
+    });
+    this.persistState();
+  }
+
+  // =============================================================================
+  // RESOURCE CLEANUP
   // =============================================================================
 
   public dispose(): void {

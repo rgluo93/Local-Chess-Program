@@ -25,7 +25,7 @@ interface PieceImages {
   [key: string]: HTMLImageElement;
 }
 
-export const CanvasChessBoard: React.FC<CanvasBoardProps> = ({ 
+export const CanvasChessBoard = React.forwardRef<HTMLCanvasElement, CanvasBoardProps>(({ 
   size = 560, 
   showStartingPosition = false, 
   boardState,
@@ -34,8 +34,9 @@ export const CanvasChessBoard: React.FC<CanvasBoardProps> = ({
   selectedSquare,
   validMoves = [],
   checkSquare = null
-}) => {
+}, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const actualRef = ref || canvasRef;
   const squareSize = size / 8;
   const labelOffset = 20;
   const canvasSize = size + labelOffset * 2; // Add space for labels
@@ -173,7 +174,7 @@ export const CanvasChessBoard: React.FC<CanvasBoardProps> = ({
 
   // Draw the canvas
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const canvas = actualRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
@@ -219,6 +220,7 @@ export const CanvasChessBoard: React.FC<CanvasBoardProps> = ({
     }
 
   }, [size, squareSize, labelOffset, canvasSize, imagesLoaded, showStartingPosition, boardState, gameState, selectedSquare, validMoves, checkSquare]);
+
 
   const drawBoard = (ctx: CanvasRenderingContext2D, boardSize: number, offset: number) => {
     const squareSize = boardSize / 8;
@@ -378,7 +380,7 @@ export const CanvasChessBoard: React.FC<CanvasBoardProps> = ({
 
 
   const getSquareFromClick = (event: React.MouseEvent<HTMLCanvasElement>): Square | null => {
-    const canvas = canvasRef.current;
+    const canvas = actualRef.current;
     if (!canvas) return null;
     
     const rect = canvas.getBoundingClientRect();
@@ -424,7 +426,7 @@ export const CanvasChessBoard: React.FC<CanvasBoardProps> = ({
 
   return (
     <canvas
-      ref={canvasRef}
+      ref={actualRef}
       width={canvasSize}
       height={canvasSize}
       className="canvas-chess-board"
@@ -441,4 +443,6 @@ export const CanvasChessBoard: React.FC<CanvasBoardProps> = ({
       }}
     />
   );
-};
+});
+
+CanvasChessBoard.displayName = 'CanvasChessBoard';

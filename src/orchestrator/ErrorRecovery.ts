@@ -11,7 +11,7 @@ import type {
   ComponentType,
   ErrorRecoveryStrategy,
   OrchestratorConfig,
-} from '@/types/Integration';
+} from '../types/Integration';
 
 // =============================================================================
 // ERROR RECOVERY MANAGER

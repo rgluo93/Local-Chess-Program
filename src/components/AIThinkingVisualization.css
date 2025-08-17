@@ -1,0 +1,179 @@
+/**
+ * AIThinkingVisualization Styles
+ */
+
+.ai-thinking-visualization {
+  position: relative;
+  pointer-events: none;
+}
+
+.thinking-arrows-canvas {
+  position: absolute;
+  pointer-events: none;
+}
+
+.thinking-indicator {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background-color: rgba(255, 255, 255, 0.95);
+  border: 2px solid #F28C28;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  min-width: 200px;
+}
+
+.thinking-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #E0E0E0;
+  border-top: 3px solid #F28C28;
+  border-radius: 50%;
+  animation: thinking-spin 1s linear infinite;
+}
+
+@keyframes thinking-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.thinking-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #3E2723;
+  text-align: center;
+}
+
+.thinking-stats {
+  font-size: 0.8rem;
+  color: #6D4C41;
+  text-align: center;
+  margin-top: 0.25rem;
+}
+
+/* Arrow legend (when expanded) */
+.arrow-legend {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: rgba(255, 255, 255, 0.95);
+  border: 1px solid #E0E0E0;
+  border-radius: 6px;
+  padding: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  font-size: 0.8rem;
+}
+
+.arrow-legend-title {
+  font-weight: 600;
+  color: #3E2723;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.arrow-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.arrow-legend-color {
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.arrow-legend-color.best {
+  background-color: #4CAF50;
+}
+
+.arrow-legend-color.second {
+  background-color: #FF9800;
+}
+
+.arrow-legend-color.third {
+  background-color: #2196F3;
+}
+
+.arrow-legend-color.other {
+  background-color: #9E9E9E;
+}
+
+.arrow-legend-text {
+  color: #666;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .thinking-indicator {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    flex-direction: row;
+    justify-content: center;
+    min-width: auto;
+    padding: 0.75rem;
+  }
+  
+  .thinking-text {
+    font-size: 0.85rem;
+  }
+  
+  .thinking-stats {
+    font-size: 0.75rem;
+  }
+  
+  .arrow-legend {
+    bottom: 10px;
+    right: 10px;
+    left: 10px;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .thinking-spinner {
+    animation: none;
+    border-top-color: #F28C28;
+  }
+  
+  .thinking-indicator {
+    animation: none;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .thinking-indicator {
+    background-color: white;
+    border-color: black;
+    border-width: 2px;
+  }
+  
+  .thinking-text {
+    color: black;
+  }
+  
+  .thinking-stats {
+    color: #333;
+  }
+}
+
+/* Print styles */
+@media print {
+  .thinking-indicator,
+  .arrow-legend,
+  .thinking-arrows-canvas {
+    display: none;
+  }
+}

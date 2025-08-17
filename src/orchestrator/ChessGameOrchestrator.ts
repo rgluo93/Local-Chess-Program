@@ -8,17 +8,15 @@
  */
 
 import { Chess } from 'chess.js';
-import { GameEngine } from '@/engine/GameEngine';
-import { GameStateManager } from '@/engine/GameStateManager';
-import { MoveHistoryManager } from '@/engine/MoveHistoryManager';
-import { EndgameDetector } from '@/engine/EndgameDetector';
-import { NotationGenerator } from '@/engine/NotationGenerator';
-import { 
-  serializeGameState, 
-  deserializeGameState, 
-  validateSerializedState 
-} from '@/utils/GameStateSerialization';
+import { GameEngine } from '../engine/GameEngine';
+import { GameStateManager } from '../engine/GameStateManager';
+import { MoveHistoryManager } from '../engine/MoveHistoryManager';
+import { EndgameDetector } from '../engine/EndgameDetector';
+import { NotationGenerator } from '../engine/NotationGenerator';
+import { GameStateSerialization } from '../utils/GameStateSerialization';
 import { EventManager } from './EventManager';
+import { AIGameIntegration } from '../ai/AIGameIntegration';
+import { GameMode } from '../ai/types/AITypes';
 
 import type {
   Square,
@@ -29,14 +27,15 @@ import type {
   GameStatus,
   GameResult,
   ChessBoard,
-} from '@/types/Chess';
+} from '../types/Chess';
 import type {
   AppState,
   UIState,
   SavedGame,
   StateValidationResult,
-} from '@/types/GameState';
-import { DEFAULT_ORCHESTRATOR_CONFIG } from '@/types/Integration';
+} from '../types/GameState';
+import type { GameMode, ThinkingMove, EngineOptions } from '../ai/types/AITypes';
+import { DEFAULT_ORCHESTRATOR_CONFIG } from '../types/Integration';
 import type {
   ChessGameOrchestratorAPI,
   MoveRequest,
@@ -67,7 +66,7 @@ import type {
   IntegrationError,
   APIResult,
   APIBatchResult,
-} from '@/types/Integration';
+} from '../types/Integration';
 
 // =============================================================================
 // ORCHESTRATOR IMPLEMENTATION
@@ -80,6 +79,8 @@ export class ChessGameOrchestrator implements ChessGameOrchestratorAPI {
   private endgameDetector: EndgameDetector;
   private notationGenerator: NotationGenerator;
   private eventManager: EventManager;
+  private aiIntegration: AIGameIntegration;
+  private serialization: GameStateSerialization;
   
   private config: OrchestratorConfig;
   private initialized = false;
@@ -113,9 +114,18 @@ export class ChessGameOrchestrator implements ChessGameOrchestratorAPI {
     // Initialize components
     this.gameEngine = new GameEngine();
     this.stateManager = new GameStateManager(this.gameEngine);
+    
     this.moveHistory = new MoveHistoryManager();
     this.endgameDetector = new EndgameDetector();
     this.notationGenerator = new NotationGenerator();
+    this.aiIntegration = new AIGameIntegration();
+    this.serialization = new GameStateSerialization();
+
+    // Set up AI integration callbacks
+    this.aiIntegration.setOrchestratorCallbacks(
+      (move: Move) => this.makeMove(move),
+      () => this.getGameState().gameState
+    );
 
     this.setupEventHandlers();
   }
@@ -124,7 +134,7 @@ export class ChessGameOrchestrator implements ChessGameOrchestratorAPI {
   // ORCHESTRATOR LIFECYCLE
   // ==========================================================================
 
-  async initialize(config?: Partial<OrchestratorConfig>): Promise<void> {
+  async initialize(config?: Partial<OrchestratorConfig>, gameMode?: GameMode): Promise<void> {
     if (this.initialized) {
       throw new Error('Orchestrator already initialized');
     }
@@ -141,6 +151,11 @@ export class ChessGameOrchestrator implements ChessGameOrchestratorAPI {
       
       // Setup cross-component integrations
       this.setupIntegrations();
+      
+      // Set initial game mode if provided
+      if (gameMode) {
+        await this.setGameMode(gameMode);
+      }
       
       this.initialized = true;
       this.initializationDate = new Date();
@@ -199,8 +214,8 @@ export class ChessGameOrchestrator implements ChessGameOrchestratorAPI {
     try {
       // Reset all components
       this.gameEngine = new GameEngine(fen);
-      this.stateManager.resetState();
-      this.moveHistory.reset();
+      this.stateManager.startNewGame();
+      this.moveHistory.clear();
       
       // Synchronize state
       await this.forceSynchronization();
@@ -221,43 +236,26 @@ export class ChessGameOrchestrator implements ChessGameOrchestratorAPI {
   }
 
   async loadGame(savedGame: SavedGame): Promise<GameStateResponse> {
+    // Simplified implementation - just load the gameState directly
     this.ensureInitialized();
     const startTime = performance.now();
 
     try {
-      // Validate saved game
-      const validation = validateSerializedState(savedGame.serializedState);
-      if (!validation.isValid) {
-        throw new Error(`Invalid saved game: ${validation.errors?.join(', ')}`);
-      }
-
-      // Deserialize and load state
-      const appState = deserializeGameState(savedGame.serializedState);
+      // NEVER create new GameEngine - this breaks synchronization with StateManager
+      // Instead, load the position into existing engine
+      this.gameEngine.loadFEN(savedGame.gameState.fen);
       
-      // Initialize engine with loaded position
-      this.gameEngine = new GameEngine(appState.gameState.currentPosition);
-      
-      // Restore state manager
-      this.stateManager.loadState(appState);
+      // Update state manager
+      this.stateManager.startNewGame();
       
       // Restore move history
-      if (appState.gameState.moveHistory) {
-        this.moveHistory.loadFromMoves(appState.gameState.moveHistory);
+      this.moveHistory.clear();
+      if (savedGame.gameState.moves) {
+        savedGame.gameState.moves.forEach(move => this.moveHistory.addMove(move));
       }
 
       // Synchronize state
       await this.forceSynchronization();
-
-      // Emit state loaded event
-      const event: StateLoadedEvent = {
-        type: 'state:loaded',
-        timestamp: new Date(),
-        source: 'orchestrator',
-        loadedGame: savedGame,
-        validation,
-      };
-      
-      await this.eventManager.emitEvent(event);
 
       const response = this.createGameStateResponse();
       this.recordPerformance('loadGame', performance.now() - startTime);
@@ -278,61 +276,22 @@ export class ChessGameOrchestrator implements ChessGameOrchestratorAPI {
       // Ensure state is synchronized
       await this.forceSynchronization();
 
-      // Create app state
-      const appState: AppState = {
-        gameState: this.stateManager.getCurrentGame(),
-        uiState: {
-          selectedSquare: null,
-          highlightedSquares: [],
-          boardTheme: 'classic',
-          zoomLevel: 1.0,
-          showCoordinates: true,
-          animationSpeed: 300,
-          soundEnabled: true,
-          autoPromote: false,
-          confirmMoves: false,
-        },
-        settings: {
-          enableAutoSave: true,
-          autoSaveInterval: 30000,
-          enableNotifications: true,
-          preferredTimeControl: 'unlimited',
-          boardOrientation: 'white',
-          enableMoveValidation: true,
-          enableUndoRedo: true,
-          maxUndoSteps: 50,
-        },
-      };
-
-      // Serialize state
-      const serializedState = serializeGameState(appState);
-
-      // Create saved game
+      const currentGame = this.stateManager.getCurrentGame();
+      
+      // Create saved game using the actual SavedGame interface
       const savedGame: SavedGame = {
         id: `game_${Date.now()}`,
         name: `Chess Game ${new Date().toLocaleDateString()}`,
-        created: new Date(),
-        lastModified: new Date(),
-        serializedState,
-        metadata: {
-          moveCount: this.moveHistory.getTotalMoves(),
-          currentPlayer: this.gameEngine.getCurrentPlayer(),
-          gameStatus: this.gameEngine.getGameStatus(),
-          gameResult: this.gameEngine.getGameResult(),
-          notation: this.notationGenerator.generatePGN(this.moveHistory.getAllMoves().map(entry => entry.move)),
-        },
+        gameState: currentGame,
+        saveDate: new Date(),
+        gameDate: currentGame.startDate,
+        moveCount: this.moveHistory.getTotalMoves(),
+        status: this.gameEngine.getGameStatus(),
+        result: this.gameEngine.getGameResult() || 'ongoing',
+        duration: currentGame.endDate ? 
+          currentGame.endDate.getTime() - currentGame.startDate.getTime() : 
+          Date.now() - currentGame.startDate.getTime(),
       };
-
-      // Emit state saved event
-      const event: StateSavedEvent = {
-        type: 'state:saved',
-        timestamp: new Date(),
-        source: 'orchestrator',
-        savedGame,
-        size: JSON.stringify(serializedState).length,
-      };
-      
-      await this.eventManager.emitEvent(event);
 
       this.recordPerformance('saveGame', performance.now() - startTime);
       return savedGame;
@@ -568,6 +527,52 @@ export class ChessGameOrchestrator implements ChessGameOrchestratorAPI {
     }
   }
 
+  async resignGame(resigningPlayer?: PieceColor): Promise<MoveResponse> {
+    this.ensureInitialized();
+    const startTime = performance.now();
+
+    try {
+      const currentGame = this.stateManager.getCurrentGame();
+      if (!currentGame) {
+        return {
+          success: false,
+          error: 'No active game to resign',
+        };
+      }
+
+      // If no player specified, use current player (the one whose turn it is)
+      const playerToResign = resigningPlayer || currentGame.currentPlayer;
+      
+      // Resign through state manager
+      this.stateManager.resignGame(playerToResign);
+      
+      // Emit game ended event
+      const endedEvent: GameEndedEvent = {
+        type: 'game:ended',
+        timestamp: new Date(),
+        source: 'orchestrator',
+        result: playerToResign === 'white' ? 'black_wins' : 'white_wins',
+        reason: 'resignation',
+        finalPosition: this.gameEngine.getFEN(),
+      };
+      
+      await this.eventManager.emitEvent(endedEvent);
+
+      // Update synchronization
+      this.lastSynchronization = new Date();
+      this.recordPerformance('resignGame', performance.now() - startTime);
+
+      return {
+        success: true,
+        gameState: this.stateManager.getCurrentGame(),
+      };
+
+    } catch (error) {
+      await this.handleError(error as Error, 'resignGame');
+      throw error;
+    }
+  }
+
   // ==========================================================================
   // GAME STATE ACCESS API
   // ==========================================================================
@@ -643,6 +648,11 @@ export class ChessGameOrchestrator implements ChessGameOrchestratorAPI {
   getCurrentPlayer(): PieceColor {
     this.ensureInitialized();
     return this.gameEngine.getCurrentPlayer();
+  }
+
+  getKingPosition(color?: PieceColor): Square | null {
+    this.ensureInitialized();
+    return this.gameEngine.getKingPosition();
   }
 
   canCastle(side: 'kingside' | 'queenside', color?: PieceColor): boolean {
@@ -1156,7 +1166,8 @@ export class ChessGameOrchestrator implements ChessGameOrchestratorAPI {
     // Since createGameStateFromEngine is private, we'll use reflection to access it
     const stateManager = this.stateManager as any;
     if (stateManager.createGameStateFromEngine) {
-      stateManager.appState.currentGame = stateManager.createGameStateFromEngine();
+      const newGameState = stateManager.createGameStateFromEngine();
+      stateManager.appState.currentGame = newGameState;
     }
     
     this.lastSynchronization = new Date();
@@ -1267,11 +1278,10 @@ export class ChessGameOrchestrator implements ChessGameOrchestratorAPI {
   }
 
   private async initializeComponents(): Promise<void> {
-    // Initialize GameEngine with starting position
-    this.gameEngine = new GameEngine();
+    // Reset the existing GameEngine to starting position instead of creating new one
+    this.gameEngine.reset();
     
-    // Initialize StateManager with the same engine instance
-    this.stateManager = new GameStateManager(this.gameEngine);
+    // Reset StateManager to use the same engine instance (don't create new StateManager)
     this.stateManager.startNewGame();
     
     // Initialize MoveHistory
@@ -1397,5 +1407,125 @@ export class ChessGameOrchestrator implements ChessGameOrchestratorAPI {
       recovery: 'Error logged and event emitted',
       success: false,
     });
+  }
+
+  // =============================================================================
+  // AI INTEGRATION METHODS
+  // =============================================================================
+
+  async setGameMode(mode: GameMode): Promise<void> {
+    try {
+      await this.aiIntegration.setGameMode(mode);
+      
+      this.stateManager.setGameMode(mode);
+      
+      // Initialize AI if switching to AI mode
+      if (mode !== 'HUMAN_VS_HUMAN' && !this.aiIntegration.isReady()) {
+        await this.aiIntegration.initialize();
+      }
+      
+      this.eventManager.emitEventSync({
+        type: 'game:mode_changed',
+        timestamp: new Date(),
+        source: 'orchestrator',
+        gameMode: mode
+      } as any);
+    } catch (error) {
+      await this.handleError(error as Error, 'setGameMode');
+      throw error;
+    }
+  }
+
+  getGameMode(): GameMode {
+    return this.stateManager.getGameMode();
+  }
+
+  async handlePlayerMove(move: Move): Promise<MoveResponse> {
+    try {
+      // Make the human move first
+      const moveResponse = await this.makeMove({
+        from: move.from,
+        to: move.to,
+        promotion: move.promotion
+      });
+
+      // If in AI mode and it's AI's turn, trigger AI move
+      if (this.getGameMode() !== 'HUMAN_VS_HUMAN' && this.stateManager.isAITurn()) {
+        await this.triggerAIMove();
+      }
+
+      return moveResponse;
+    } catch (error) {
+      await this.handleError(error as Error, 'handlePlayerMove');
+      throw error;
+    }
+  }
+
+  async triggerAIMove(): Promise<void> {
+    try {
+      const currentGame = this.stateManager.getCurrentGame();
+      if (!currentGame) {
+        throw new Error('No current game for AI move');
+      }
+
+      console.log('🤖 Triggering AI move for current position:', currentGame.fen);
+
+      // Get the current game state after human move
+      const gameStateResponse = this.getGameState();
+      const gameState = gameStateResponse.gameState;
+      
+      console.log('🤖 Game state for AI:', {
+        fen: gameState.fen,
+        currentPlayer: gameState.currentPlayer,
+        status: gameState.status
+      });
+
+      // Only proceed if it's the AI's turn  
+      // In Human vs AI mode, AI plays as black by default
+      // TODO: Make this configurable for user to choose color
+      const currentGameMode = this.aiIntegration.getGameMode();
+      const isAITurn = (currentGameMode === GameMode.HUMAN_VS_AI && gameState.currentPlayer === 'black');
+      
+      if (!isAITurn) {
+        console.warn('⚠️ Not AI turn, skipping. Current player:', gameState.currentPlayer, 'Game mode:', currentGameMode);
+        return;
+      }
+
+      // Generate AI move directly
+      const aiMove = await this.aiIntegration.generateAIMove(gameState);
+      
+      // Execute the AI move
+      const moveResult = await this.makeMove(aiMove);
+      console.log('🤖 AI move executed:', moveResult);
+      
+    } catch (error) {
+      await this.handleError(error as Error, 'triggerAIMove');
+      throw error;
+    }
+  }
+
+  getAIThinkingMoves(): ThinkingMove[] {
+    return this.aiIntegration.getAIThinkingMoves();
+  }
+
+  isAIThinking(): boolean {
+    return this.aiIntegration.isAIThinking();
+  }
+
+  setAIEngineOptions(options: Partial<EngineOptions>): void {
+    this.aiIntegration.setAIEngineOptions(options);
+  }
+
+  async initializeAI(): Promise<void> {
+    try {
+      if (!this.aiIntegration.isReady()) {
+        await this.aiIntegration.initialize();
+        this.stateManager.setAIEngineStatus('ready');
+      }
+    } catch (error) {
+      this.stateManager.setAIEngineStatus('error');
+      await this.handleError(error as Error, 'initializeAI');
+      throw error;
+    }
   }
 }

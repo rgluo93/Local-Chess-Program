@@ -14,12 +14,12 @@ import type {
   PieceColor,
   GameStatus,
   ChessBoard,
-} from '@/types/Chess';
+} from '../types/Chess';
 import type {
   MoveHistoryEntry,
   GameReplay,
   MoveAnalysis,
-} from '@/types/GameState';
+} from '../types/GameState';
 
 export interface MoveHistoryOptions {
   enableAnalysis?: boolean;

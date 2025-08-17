@@ -2,12 +2,13 @@
 
 ## 1. Executive Summary
 
-This document outlines the modular system architecture for a localhost-based chess application supporting offline human-vs-human games with a comprehensive visual UI. The system is designed to meet all functional and non-functional requirements while maintaining extensibility for future enhancements.
+This document outlines the modular system architecture for a localhost-based chess application supporting offline human-vs-human and human-vs-AI games with a comprehensive visual UI. The system is designed to meet all functional and non-functional requirements while maintaining extensibility for future enhancements.
 
 **Technology Stack:**
 - **Frontend**: TypeScript + React, Canvas/SVG rendering, CSS animations
 - **Backend**: Node.js + Express server
 - **Game Logic**: Chess.js library with custom extensions
+- **AI Engine**: Stockfish.js (WebAssembly) for computer opponent
 - **Storage**: Browser LocalStorage API
 - **Deployment**: Localhost web application (http://localhost:3000)
 
@@ -36,6 +37,12 @@ This document outlines the modular system architecture for a localhost-based che
 │  ├─ Move Validator                                     │
 │  ├─ Endgame Detector                                   │
 │  └─ Notation Generator (PGN/FEN)                      │
+├─────────────────────────────────────────────────────────┤
+│  AI Engine Layer                                       │
+│  ├─ Stockfish Engine (WebAssembly)                    │
+│  ├─ UCI Communication Protocol                        │
+│  ├─ AI Player Controller                              │
+│  └─ Move Evaluation & Thinking Visualization          │
 ├─────────────────────────────────────────────────────────┤
 │  Data Layer                                            │
 │  ├─ LocalStorage Interface                            │
@@ -157,16 +164,118 @@ interface MoveValidationResult {
   - Draw by 50-move rule
   - Resignation handling
 
-### 3.4 Data Layer
+### 3.4 AI Engine Layer
 
-#### 3.4.1 LocalStorage Interface
+#### 3.4.1 Stockfish Engine Interface
+**Responsibility**: WebAssembly-based Stockfish integration for AI gameplay
+- **Core Features**:
+  - UCI (Universal Chess Interface) protocol communication
+  - Position setup and synchronization with game state
+  - Move calculation and evaluation requests
+  - Engine health monitoring and error recovery
+  - Asynchronous processing via Web Workers
+
+```typescript
+interface StockfishEngine {
+  initialize(): Promise<void>;
+  setPosition(fen: string): Promise<void>;
+  getBestMove(options: EngineOptions): Promise<Move>;
+  evaluatePosition(): Promise<EvaluationResult>;
+  stop(): void;
+  isReady(): boolean;
+}
+
+interface EngineOptions {
+  depth?: number;
+  timeLimit?: number; // milliseconds
+  multiPV?: number; // number of best moves to consider
+}
+
+interface EvaluationResult {
+  bestMove: Move;
+  evaluation: number; // centipawns
+  depth: number;
+  nodes: number;
+  time: number;
+  principalVariation: Move[];
+}
+```
+
+#### 3.4.2 AI Player Controller
+**Responsibility**: High-level AI player coordination and game mode management
+- **Functions**:
+  - Game mode switching (Human vs Human / Human vs AI)
+  - AI move request coordination
+  - Thinking time management
+  - Move validation and application
+  - AI thinking visualization coordination
+
+```typescript
+interface AIPlayer {
+  makeMove(gameState: GameState): Promise<Move>;
+  startThinking(gameState: GameState): void;
+  stopThinking(): void;
+  getThinkingMoves(): Move[]; // For visualization
+  isThinking(): boolean;
+}
+
+enum GameMode {
+  HUMAN_VS_HUMAN = 'human_vs_human',
+  HUMAN_VS_AI = 'human_vs_ai',
+  AI_VS_AI = 'ai_vs_ai' // For testing
+}
+```
+
+#### 3.4.3 UCI Communication Protocol
+**Responsibility**: Low-level communication with Stockfish engine
+- **Protocol Implementation**:
+  - Command queue management
+  - Response parsing and validation
+  - Error handling and recovery
+  - Engine state synchronization
+
+```typescript
+interface UCIProtocol {
+  sendCommand(command: string): Promise<string>;
+  parseResponse(response: string): UCIResponse;
+  isEngineReady(): Promise<boolean>;
+  quit(): void;
+}
+
+interface UCIResponse {
+  type: 'bestmove' | 'info' | 'readyok' | 'error';
+  data: any;
+  raw: string;
+}
+```
+
+#### 3.4.4 AI Thinking Visualization
+**Responsibility**: Visual feedback for AI move consideration
+- **Features**:
+  - Arrow rendering system for candidate moves
+  - Progressive move revelation during thinking
+  - Color-coded evaluation strength indicators
+  - Performance-optimized canvas updates
+
+```typescript
+interface ThinkingVisualization {
+  showCandidateMoves(moves: Move[], evaluations: number[]): void;
+  hideCandidateMoves(): void;
+  updateThinkingProgress(depth: number, nodes: number): void;
+  renderArrows(canvas: CanvasRenderingContext2D): void;
+}
+```
+
+### 3.5 Data Layer
+
+#### 3.5.1 LocalStorage Interface
 **Responsibility**: Browser storage abstraction
 - **Storage Keys**:
   - `chess-game-current`: Current game state
   - `chess-game-history`: Game history for replay
   - `chess-settings`: UI preferences and zoom levels
 
-#### 3.4.2 Serialization Module
+#### 3.5.2 Serialization Module
 **Responsibility**: Convert game state to/from storable formats
 - **Formats**: JSON for localStorage, PGN/FEN for export
 - **Compression**: Minimize storage footprint for move history
@@ -325,10 +434,14 @@ interface ChessBoard {
 
 ## 10. Extensibility Considerations
 
-### 10.1 Future AI Integration
-- **Interface**: `AIPlayer` interface for engine integration
-- **Communication**: Standard UCI protocol support preparation
+### 10.1 AI Integration Implementation (Phase 3)
+- **Engine**: Stockfish.js WebAssembly integration for full-strength AI
+- **Interface**: Complete `AIPlayer` and `StockfishEngine` interfaces implemented
+- **Communication**: UCI protocol implementation with command queuing
 - **Threading**: Web Workers for AI calculations without UI blocking
+- **Visualization**: AI thinking arrows showing candidate moves during calculation
+- **Game Modes**: Human vs Human and Human vs AI with seamless switching
+- **Performance**: Asynchronous processing maintaining ≤100ms UI response time
 
 ### 10.2 Online Multiplayer Preparation
 - **State Synchronization**: Centralized state management ready for networking

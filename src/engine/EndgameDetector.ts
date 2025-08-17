@@ -15,7 +15,7 @@ import type {
   GameResult,
   Square,
   Move,
-} from '@/types/Chess';
+} from '../types/Chess';
 
 export interface EndgameAnalysis {
   status: GameStatus;

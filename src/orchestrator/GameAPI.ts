@@ -15,13 +15,13 @@ import type {
   GameStatus,
   GameResult,
   ChessBoard,
-} from '@/types/Chess';
+} from '../types/Chess';
 import type {
   AppState,
   UIState,
   SavedGame,
   StateValidationResult,
-} from '@/types/GameState';
+} from '../types/GameState';
 import type {
   MoveRequest,
   MoveResponse,
@@ -33,7 +33,7 @@ import type {
   ComponentType,
   OrchestratorConfig,
   IntegrationTestScenario,
-} from '@/types/Integration';
+} from '../types/Integration';
 
 // =============================================================================
 // CORE GAME API

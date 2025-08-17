@@ -4,16 +4,14 @@
  */
 
 import React from 'react';
-import { GameStateManager } from '../engine/GameStateManager';
 import type { GameState } from '../types/Chess';
 import './MoveHistoryPanel.css';
 
 interface MoveHistoryPanelProps {
-  gameStateManager: GameStateManager;
   gameState: GameState | null;
 }
 
-const MoveHistoryPanel: React.FC<MoveHistoryPanelProps> = ({ gameStateManager, gameState }) => {
+const MoveHistoryPanel: React.FC<MoveHistoryPanelProps> = ({ gameState }) => {
   const moves = gameState?.moves || [];
   
   return (

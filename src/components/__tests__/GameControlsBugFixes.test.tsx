@@ -10,6 +10,7 @@ import GameControls from '../GameControls';
 import { GameStateManager } from '../../engine/GameStateManager';
 import { GameEngine } from '../../engine/GameEngine';
 import type { GameState } from '../../types/Chess';
+import type { GameMode } from '../../ai/types/AITypes';
 
 // Mock HTML Image for testing
 global.Image = vi.fn(() => ({
@@ -311,6 +312,138 @@ describe('GameControls - Bug Fixes', () => {
       
       const resignButton = screen.getByTestId('button-text-resign').closest('button');
       expect(resignButton).toHaveAttribute('title', 'No active game to resign');
+    });
+  });
+
+  describe('AI Integration Features', () => {
+    test('should render GameModeSelector when onGameModeChange prop is provided', () => {
+      const onGameModeChange = vi.fn();
+      const activeGame = gameStateManager.getCurrentGame();
+      
+      render(
+        <GameControls 
+          gameStateManager={gameStateManager}
+          onGameStateChange={onGameStateChange}
+          currentGame={activeGame}
+          gameMode="HUMAN_VS_HUMAN"
+          onGameModeChange={onGameModeChange}
+          aiEngineStatus="ready"
+        />
+      );
+      
+      expect(screen.getByText('Game Mode')).toBeInTheDocument();
+      expect(screen.getByText('Human vs Human')).toBeInTheDocument();
+      expect(screen.getByText('Human vs AI')).toBeInTheDocument();
+    });
+
+    test('should not render GameModeSelector when onGameModeChange prop is not provided', () => {
+      const activeGame = gameStateManager.getCurrentGame();
+      
+      render(
+        <GameControls 
+          gameStateManager={gameStateManager}
+          onGameStateChange={onGameStateChange}
+          currentGame={activeGame}
+        />
+      );
+      
+      expect(screen.queryByText('Game Mode')).not.toBeInTheDocument();
+    });
+
+    test('should disable buttons when AI is thinking', () => {
+      const onGameModeChange = vi.fn();
+      const activeGame = gameStateManager.getCurrentGame();
+      
+      render(
+        <GameControls 
+          gameStateManager={gameStateManager}
+          onGameStateChange={onGameStateChange}
+          currentGame={activeGame}
+          gameMode="HUMAN_VS_AI"
+          onGameModeChange={onGameModeChange}
+          aiEngineStatus="thinking"
+          isAIThinking={true}
+        />
+      );
+      
+      const newGameButton = screen.getByTestId('button-text-new-game').closest('button');
+      const resignButton = screen.getByTestId('button-text-resign').closest('button');
+      const pgnButton = screen.getByTestId('button-text-pgn').closest('button');
+      const fenButton = screen.getByTestId('button-text-fen').closest('button');
+      
+      expect(newGameButton).toBeDisabled();
+      expect(resignButton).toBeDisabled();
+      expect(pgnButton).toBeDisabled();
+      expect(fenButton).toBeDisabled();
+    });
+
+    test('should enable buttons when AI is not thinking', () => {
+      const onGameModeChange = vi.fn();
+      const activeGame = gameStateManager.getCurrentGame();
+      
+      render(
+        <GameControls 
+          gameStateManager={gameStateManager}
+          onGameStateChange={onGameStateChange}
+          currentGame={activeGame}
+          gameMode="HUMAN_VS_AI"
+          onGameModeChange={onGameModeChange}
+          aiEngineStatus="ready"
+          isAIThinking={false}
+        />
+      );
+      
+      const resignButton = screen.getByTestId('button-text-resign').closest('button');
+      const pgnButton = screen.getByTestId('button-text-pgn').closest('button');
+      const fenButton = screen.getByTestId('button-text-fen').closest('button');
+      
+      expect(resignButton).not.toBeDisabled();
+      expect(pgnButton).not.toBeDisabled();
+      expect(fenButton).not.toBeDisabled();
+    });
+
+    test('should disable GameModeSelector when game is active', () => {
+      const onGameModeChange = vi.fn();
+      const activeGame = gameStateManager.getCurrentGame();
+      
+      render(
+        <GameControls 
+          gameStateManager={gameStateManager}
+          onGameStateChange={onGameStateChange}
+          currentGame={activeGame}
+          gameMode="HUMAN_VS_HUMAN"
+          onGameModeChange={onGameModeChange}
+          aiEngineStatus="ready"
+        />
+      );
+      
+      const humanVsHumanButton = screen.getByLabelText('Human vs Human mode');
+      const humanVsAIButton = screen.getByLabelText('Human vs AI mode');
+      
+      expect(humanVsHumanButton).toBeDisabled();
+      expect(humanVsAIButton).toBeDisabled();
+    });
+
+    test('should pass correct AI status to GameModeSelector', () => {
+      const onGameModeChange = vi.fn();
+      const resignedGame: GameState = {
+        ...gameStateManager.getCurrentGame()!,
+        status: 'resigned',
+        result: 'black_wins'
+      };
+      
+      render(
+        <GameControls 
+          gameStateManager={gameStateManager}
+          onGameStateChange={onGameStateChange}
+          currentGame={resignedGame}
+          gameMode="HUMAN_VS_AI"
+          onGameModeChange={onGameModeChange}
+          aiEngineStatus="error"
+        />
+      );
+      
+      expect(screen.getByText('AI Error')).toBeInTheDocument();
     });
   });
 });

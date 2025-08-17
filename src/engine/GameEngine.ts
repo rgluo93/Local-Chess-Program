@@ -20,7 +20,7 @@ import type {
   Piece,
   CastlingRights,
   SpecialMoveType,
-} from '@/types/Chess';
+} from '../types/Chess';
 
 export interface MoveResult {
   isValid: boolean;
@@ -33,9 +33,11 @@ export interface MoveResult {
 export class GameEngine {
   private chess: Chess;
   private moveHistory: Move[] = [];
+  private _instanceId: string; // For debugging
 
   constructor(fen?: string) {
     this.chess = new Chess(fen);
+    this._instanceId = `engine-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
   }
 
   // ==========================================================================
@@ -49,6 +51,7 @@ export class GameEngine {
     try {
       // Check for wrong turn before attempting move
       const piece = this.chess.get(from);
+      
       if (piece) {
         const currentPlayer = this.chess.turn() === 'w' ? 'white' : 'black';
         const pieceColor = piece.color === 'w' ? 'white' : 'black';
@@ -61,7 +64,6 @@ export class GameEngine {
           };
         }
       }
-      
       
       // Attempt the move
       const moveObject = this.chess.move({
@@ -409,6 +411,10 @@ export class GameEngine {
 
   public isGameOver(): boolean {
     return this.chess.isGameOver();
+  }
+
+  public getInstanceId(): string {
+    return this._instanceId;
   }
 
 }

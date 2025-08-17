@@ -5,15 +5,21 @@
 
 .game-controls {
   display: flex;
-  gap: 10px;
-  justify-content: center;
-  flex-wrap: wrap;
-  padding: 10px;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
   background-color: rgba(62, 39, 35, 0.1);
   border-radius: 8px;
 }
 
-.game-controls button {
+.control-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.control-buttons button {
   min-width: 100px;
   font-size: var(--font-size-button);
   font-weight: var(--font-weight-bold);
@@ -25,53 +31,104 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.game-controls button:hover {
+.control-buttons button:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-.game-controls button span {
+.control-buttons button span {
   display: inline-block;
   color: var(--color-primary-amber);
 }
 
-.game-controls button.positive-action {
+.control-buttons button.positive-action {
   background-color: var(--color-accent-green);
 }
 
-.game-controls button.positive-action span {
+.control-buttons button.positive-action span {
   color: white;
 }
 
-.game-controls button.negative-action {
+.control-buttons button.negative-action {
   background-color: var(--color-accent-rose);
 }
 
-.game-controls button.negative-action span {
+.control-buttons button.negative-action span {
   color: white;
 }
 
-.game-controls button.primary-bg {
+.control-buttons button.primary-bg {
   background-color: var(--color-primary-brown);
 }
 
-.game-controls button.primary-bg span {
+.control-buttons button.primary-bg span {
   color: var(--color-primary-amber);
 }
 
 /* Disabled button styles */
-.game-controls button:disabled {
+.control-buttons button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-.game-controls button:disabled:hover {
+.control-buttons button:disabled:hover {
   transform: none;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-.game-controls button:disabled span {
+.control-buttons button:disabled span {
   color: #888;
+}
+
+/* AI Status Display */
+.ai-status-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  border: 1px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.ai-status-display.ai-ready {
+  background-color: rgba(76, 175, 80, 0.1);
+  border-color: rgba(76, 175, 80, 0.3);
+  color: #2E7D32;
+}
+
+.ai-status-display.ai-thinking {
+  background-color: rgba(255, 193, 7, 0.1);
+  border-color: rgba(255, 193, 7, 0.3);
+  color: #F57C00;
+}
+
+.ai-status-display.ai-thinking .ai-status-icon {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.ai-status-display.ai-error {
+  background-color: rgba(244, 67, 54, 0.1);
+  border-color: rgba(244, 67, 54, 0.3);
+  color: #C62828;
+}
+
+.ai-status-display.ai-offline {
+  background-color: rgba(158, 158, 158, 0.1);
+  border-color: rgba(158, 158, 158, 0.3);
+  color: #424242;
+}
+
+.ai-status-icon {
+  font-size: 0.8rem;
+}
+
+.ai-status-text {
+  font-weight: 600;
 }

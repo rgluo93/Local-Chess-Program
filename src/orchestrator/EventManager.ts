@@ -13,7 +13,7 @@ import type {
   PerformanceMeasuredEvent,
   ErrorOccurredEvent,
   IntegrationError,
-} from '@/types/Integration';
+} from '../types/Integration';
 
 // =============================================================================
 // EVENT SUBSCRIPTION TYPES

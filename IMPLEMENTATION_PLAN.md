@@ -186,10 +186,101 @@
 
 ---
 
-## Phase 3: Advanced Interactions & Animations
+## Phase 3: Stockfish Chess Engine Integration for Singleplayer Mode
 **Status**: ⬜ Not Started
 
-### 3.1 Drag-and-Drop System
+### 3.1 Stockfish Engine Integration
+- [x] Create `src/ai/` directory structure:
+  - [x] `StockfishEngine.ts` - Main Stockfish wrapper class
+  - [x] `AIPlayer.ts` - AI player abstraction layer  
+  - [ ] `EngineSettings.ts` - Engine configuration and options
+  - [x] `__tests__/StockfishEngine.test.ts` - Unit tests for engine integration
+- [ ] Implement UCI (Universal Chess Interface) communication
+- [ ] Add engine initialization, position setup, and move calculation
+- [ ] Add engine health monitoring and error recovery
+- [ ] Use full-strength Stockfish - No difficulty limitations initially
+
+**Testing Criteria:**
+- [ ] **✅ Test Scenario #26**: Basic AI Move Generation
+- [ ] Engine communicates correctly via UCI protocol
+- [ ] Stockfish calculates legal moves consistently
+- [ ] Error recovery works for engine failures
+
+### 3.2 Game Mode System Integration
+- [ ] Extend GameStateManager - Add AI game mode tracking and state
+- [ ] Update ChessGameOrchestrator - Integrate AI player with existing orchestration
+- [ ] Modify GameEngine - Add AI move validation and integration hooks
+- [ ] Update types:
+  - [ ] Add `GameMode` enum (HUMAN_VS_HUMAN, HUMAN_VS_AI)
+  - [ ] Add `AIPlayer` interfaces to existing type system
+  - [ ] Extend `GameState` interface for AI-specific data
+
+**Testing Criteria:**
+- [ ] Game modes switch correctly between human vs human and human vs AI
+- [ ] AI integration preserves existing functionality
+- [ ] State management handles AI player data correctly
+
+### 3.3 UI Components for Singleplayer Mode
+- [ ] Create GameModeSelector component - Choose between multiplayer/singleplayer
+- [ ] Update GameControls - Add "Play vs Computer" button
+- [ ] Update MoveHistoryPanel - Show AI thinking indicators
+- [ ] Extend GameContainer - Handle AI game mode state and rendering
+- [ ] Add AI thinking visualization - Highlight squares showing moves being considered by the engine
+- [ ] Add loading indicators for AI move calculation
+
+**Testing Criteria:**
+- [ ] Game mode selection works correctly
+- [ ] AI thinking visualization displays candidate moves with arrows
+- [ ] UI remains responsive during AI calculations
+- [ ] **✅ Test Scenario #30**: AI Thinking Visualization (arrows display)
+
+### 3.4 AI Move Processing & Game Flow
+- [ ] Implement AI move queue system - Handle asynchronous AI moves
+- [ ] Add AI thinking indicators - Visual feedback with arrows pointing to candidate moves being evaluated
+- [ ] Add game outcome handling specific to human vs AI games
+- [ ] Implement auto-play mode (AI vs AI) for testing purposes
+- [ ] Create move consideration visualization - Draw arrows on board showing potential moves during AI calculation
+
+**Testing Criteria:**
+- [ ] **✅ Test Scenario #27**: AI vs Human Complete Game
+- [ ] AI moves are processed asynchronously without blocking UI
+- [ ] Game outcomes handle AI player correctly
+- [ ] Auto-play mode functions for testing
+
+### 3.6 Testing & Integration
+- [ ] Create comprehensive AI test suite:
+  - [ ] Engine communication tests
+  - [ ] Move generation validation
+  - [ ] Game flow integration tests
+  - [ ] Performance benchmarks
+- [ ] Add new test scenarios:
+  - [ ] **✅ Test Scenario #26**: Basic AI Move Generation
+  - [ ] **✅ Test Scenario #27**: AI vs Human Complete Game
+  - [ ] **✅ Test Scenario #28**: Engine Error Recovery
+  - [ ] **✅ Test Scenario #29**: AI Performance Benchmarking
+  - [ ] **✅ Test Scenario #30**: AI Thinking Visualization (arrows display)
+- [ ] Integration testing with existing Phase 1-2 components
+- [ ] Performance optimization - Ensure AI doesn't block UI (≤100ms response time maintained)
+
+**Testing Criteria:**
+- [ ] All new test scenarios pass
+- [ ] Performance requirements maintained
+- [ ] Integration with existing components works seamlessly
+- [ ] **✅ Test Scenario #28**: Engine Error Recovery
+- [ ] **✅ Test Scenario #29**: AI Performance Benchmarking
+
+**Phase 3 Completion Criteria:**
+- [ ] All deliverables completed
+- [ ] All testing criteria passed
+- [ ] User approval obtained
+- [ ] **Phase 3 Status**: ⬜ Complete
+
+---
+
+## Phase 4: Advanced Interactions & Animations
+**Status**: ⬜ Not Started
+
+### 4.1 Drag-and-Drop System
 - [ ] Implement mouse/touch event handlers for dragging
 - [ ] Create real-time piece-follows-cursor animation
 - [ ] Add drag state management
@@ -205,7 +296,7 @@
 - [ ] Drag animations maintain 60fps
 - [ ] **✅ Test Scenario #14**: Reactive Drag Animation
 
-### 3.2 Special Moves Implementation & Advanced Integration (Partially Complete)
+### 4.2 Special Moves Implementation & Advanced Integration (Partially Complete)
 - [x] Implement castling logic: ✅ (Backend via Chess.js)
   - [x] Kingside castling validation ✅ (Chess.js handles)
   - [ ] Kingside castling animation
@@ -231,13 +322,13 @@
 - [x] **✅ Test Scenario #4**: Queenside Castling Blocked (Illegal) - Validation works
 - [x] **✅ Test Scenario #5**: En Passant Capture - Works via backend
 - [ ] **✅ Test Scenario #6**: Pawn Promotion to Knight
-- [ ] Pawn Promotion to Queen
+- [x] Pawn Promotion to Queen
 - [x] All special moves recorded in algebraic notation ✅
 - [x] **✅ Test Scenario #23**: Special Moves Integration (castling affects endgame detection) ✅
 - [x] Castling rights properly saved/loaded in game serialization ✅
 - [x] En passant state persists through save/load cycles ✅
 
-### 3.3 Enhanced Visual Feedback ✅ COMPLETED
+### 4.3 Enhanced Visual Feedback ✅ COMPLETED
 - [x] Implement check highlighting (king's square) ✅ (Soft orange glow)
 - [x] Create game status display component ✅ (In MoveHistoryPanel)
 - [x] Add turn indicator ✅ (Shows current player in MoveHistoryPanel)
@@ -252,18 +343,18 @@
 - [x] No animation glitches or stuttering ✅
 - [x] **Phase 3.3 Status**: ✅ Complete (except optional trails)
 
-**Phase 3 Completion Criteria:**
+**Phase 4 Completion Criteria:**
 - [ ] All deliverables completed (missing: drag-and-drop, promotion UI, some animations)
 - [x] Core functionality testing criteria passed (special moves work, visual feedback complete)
 - [ ] User approval obtained
-- [ ] **Phase 3 Status**: 🟡 Partially Complete (65% - Special moves backend + visual feedback done)
+- [ ] **Phase 4 Status**: 🟡 Partially Complete (65% - Special moves backend + visual feedback done)
 
 ---
 
-## Phase 4: Zoom & Responsive Design
+## Phase 5: Zoom & Responsive Design
 **Status**: ⬜ Not Started
 
-### 4.1 Zoom System Implementation & Game State Integration
+### 5.1 Zoom System Implementation & Game State Integration
 - [ ] Create ZoomController component
 - [ ] Implement zoom range control (48px-128px per square, 384px-1024px board)
 - [ ] Add keyboard shortcuts:
@@ -289,7 +380,7 @@
 - [ ] Piece rendering stays crisp at all scales
 - [ ] Zoom buttons fade properly (40%/100% opacity)
 
-### 4.2 Responsive Window Handling & UI State Integration
+### 5.2 Responsive Window Handling & UI State Integration
 - [ ] Implement real-time window resize detection
 - [ ] Create 60fps resize update system
 - [ ] Maintain perfect square aspect ratio during resize
@@ -311,7 +402,7 @@
 - [ ] Layout reflow works smoothly
 - [ ] No visual glitches during resize
 
-### 4.3 Performance Optimization & Backend Integration
+### 5.3 Performance Optimization & Backend Integration
 - [ ] Implement canvas layering system (board, pieces, highlights)
 - [ ] Add event throttling for high-frequency events (resize, drag)
 - [ ] Implement memoization for expensive calculations:
@@ -331,18 +422,18 @@
 - [ ] Smooth animations maintained under load
 - [ ] Performance profiling shows optimization gains
 
-**Phase 4 Completion Criteria:**
+**Phase 5 Completion Criteria:**
 - [ ] All deliverables completed
 - [ ] All testing criteria passed
 - [ ] User approval obtained
-- [ ] **Phase 4 Status**: ⬜ Complete
+- [ ] **Phase 5 Status**: ⬜ Complete
 
 ---
 
-## Phase 5: Game Management Features
+## Phase 6: Game Management Features
 **Status**: ⬜ Not Started
 
-### 5.1 Save/Load System & Complete State Integration
+### 6.1 Save/Load System & Complete State Integration
 - [ ] Implement LocalStorage persistence interface
 - [ ] Create game serialization/deserialization functions
 - [ ] Build Save Game dialog component
@@ -367,7 +458,7 @@
 - [ ] Loaded games maintain full integration between all components
 - [ ] Save files remain compatible across app versions
 
-### 5.2 Move History & Notation Integration
+### 6.2 Move History & Notation Integration
 - [ ] Create MoveHistoryPanel component with scrollable list
 - [ ] Implement PGN export functionality
 - [ ] Implement FEN export functionality
@@ -394,7 +485,7 @@
 - [ ] Replay navigation maintains state consistency across all components
 - [ ] Export functionality reflects complete game state
 
-### 5.3 Game Ending Features & Complete Integration
+### 6.3 Game Ending Features & Complete Integration
 - [ ] Implement Resign button functionality
 - [ ] Add comprehensive draw condition detection:
   - [ ] Threefold repetition detection
@@ -416,18 +507,18 @@
 - [ ] Post-game controls appear (New Game, Copy PGN/FEN)
 - [ ] Draw conditions detected automatically
 
-**Phase 5 Completion Criteria:**
+**Phase 6 Completion Criteria:**
 - [ ] All deliverables completed
 - [ ] All testing criteria passed
 - [ ] User approval obtained
-- [ ] **Phase 5 Status**: ⬜ Complete
+- [ ] **Phase 6 Status**: ⬜ Complete
 
 ---
 
-## Phase 6: Testing, Polish & Final Validation
+## Phase 7: Testing, Polish & Final Validation
 **Status**: ⬜ Not Started
 
-### 6.1 Comprehensive Test Suite Execution & Integration Testing
+### 7.1 Comprehensive Test Suite Execution & Integration Testing
 - [ ] Run complete test scenario validation:
   - [ ] **✅ Test Scenario #1**: Basic Pawn Double Move
   - [ ] **✅ Test Scenario #2**: Illegal Knight Move  
@@ -460,7 +551,7 @@
 - [ ] **Integration stress testing with all components coordinated**
 - [ ] **End-to-end testing of ChessGameOrchestrator coordination**
 
-### 6.2 UI/UX Polish & Cross-Browser Integration Testing
+### 7.2 UI/UX Polish & Cross-Browser Integration Testing
 - [ ] Final visual styling validation:
   - [ ] Color scheme matches requirements exactly
   - [ ] Button styling matches `Visual Assets/example_button_style.png`
@@ -478,7 +569,7 @@
 - [ ] **Validate ChessGameOrchestrator works consistently across all browsers**
 - [ ] **Test save/load integration compatibility across browser storage implementations**
 
-### 6.3 Documentation & Final Deployment Preparation
+### 7.3 Documentation & Final Deployment Preparation
 - [ ] Update system design document with any changes
 - [ ] Create user guide for running the application
 - [ ] Update developer documentation
@@ -490,14 +581,14 @@
 - [ ] **Document component coordination patterns for future maintenance**
 - [ ] **Finalize integration API documentation**
 
-**Phase 6 Completion Criteria:**
-- [ ] All 20 test scenarios pass completely
+**Phase 7 Completion Criteria:**
+- [ ] All 30 test scenarios pass completely (including new AI scenarios #26-30)
 - [ ] Cross-browser compatibility confirmed
 - [ ] Performance requirements met (≤100ms response time)
 - [ ] UI matches visual requirements exactly
 - [ ] Documentation complete and accurate
 - [ ] User final acceptance testing passed
-- [ ] **Phase 6 Status**: ⬜ Complete
+- [ ] **Phase 7 Status**: ⬜ Complete
 
 ---
 
@@ -508,15 +599,16 @@
 - [x] **Phase 1.2**: Core Game Logic Foundation ✅ COMPLETED
 - [x] **Phase 1.3**: Game State Management ✅ COMPLETED
 - [x] **Phase 1.4**: Component Integration & API Layer ✅ COMPLETED
-- [ ] **Phase 2**: Basic UI & Board Rendering ⬜
-- [ ] **Phase 3**: Advanced Interactions & Animations ⬜
-- [ ] **Phase 4**: Zoom & Responsive Design ⬜
-- [ ] **Phase 5**: Game Management Features ⬜
-- [ ] **Phase 6**: Testing, Polish & Final Validation ⬜
+- [x] **Phase 2**: Basic UI & Board Rendering ✅ COMPLETED
+- [ ] **Phase 3**: Stockfish Chess Engine Integration for Singleplayer Mode ⬜
+- [ ] **Phase 4**: Advanced Interactions & Animations ⬜
+- [ ] **Phase 5**: Zoom & Responsive Design ⬜
+- [ ] **Phase 6**: Game Management Features ⬜
+- [ ] **Phase 7**: Testing, Polish & Final Validation ⬜
 
-### Test Scenarios Progress: 4/25 Completed (Test Scenarios #1, #7, #8, #21)
-### Integration Test Scenarios: 1/5 Completed (Test Scenario #21)
-### Overall Project Progress: 21% Complete (4/19 subphases)
+### Test Scenarios Progress: 4/30 Completed (Test Scenarios #1, #7, #8, #21)
+### Integration Test Scenarios: 1/10 Completed (Test Scenario #21)
+### Overall Project Progress: 17% Complete (5/30 subphases including new Phase 3)
 
 ---
 

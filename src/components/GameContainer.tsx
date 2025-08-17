@@ -13,6 +13,7 @@ import { GameEngine } from '../engine/GameEngine';
 import { ChessGameOrchestrator } from '../orchestrator/ChessGameOrchestrator';
 import type { Square, GameState, PieceType } from '../types/Chess';
 import { GameMode } from '../ai/types/AITypes';
+import type { ThinkingMove } from '../ai/types/AITypes';
 import './GameContainer.css';
 
 const GameContainer: React.FC = () => {
@@ -29,8 +30,7 @@ const GameContainer: React.FC = () => {
   const [gameMode, setGameMode] = useState<GameMode | null>(null); // Start with no mode selected
   const [aiEngineStatus, setAIEngineStatus] = useState<'ready' | 'thinking' | 'error' | 'offline'>('offline');
   const [isAIThinking, setIsAIThinking] = useState(false);
-  const [aiThinkingSquare, setAIThinkingSquare] = useState<Square | null>(null);
-  const [aiMoveDestinationSquare, setAIMoveDestinationSquare] = useState<Square | null>(null);
+  const [aiThinkingMoves, setAIThinkingMoves] = useState<ThinkingMove[]>([]);
 
   // Modal state
   const [showGameModeModal, setShowGameModeModal] = useState(true); // Show on first load
@@ -169,29 +169,17 @@ const GameContainer: React.FC = () => {
           setIsAIThinking(true);
           setAIEngineStatus('thinking');
           
-          // Set AI thinking square - for now we'll use a mock value
-          // In a real implementation, this would come from the AI's current position analysis
-          setAIThinkingSquare('e7'); // Mock thinking square
-          
           await orchestrator.triggerAIMove();
-          
-          // Clear thinking square
-          setAIThinkingSquare(null);
           setIsAIThinking(false);
           setAIEngineStatus('ready');
           
           // Update game state and get the last move
           updateGameState();
-          const latestGameState = orchestrator.getGameState().gameState;
-          if (latestGameState?.lastMove) {
-            setAIMoveDestinationSquare(latestGameState.lastMove.to);
-          }
           
         } catch (error) {
           console.error('AI move failed:', error);
           setAIEngineStatus('error');
           setIsAIThinking(false);
-          setAIThinkingSquare(null);
         }
       }
     };
@@ -238,8 +226,6 @@ const GameContainer: React.FC = () => {
   const handleSquareClickAsync = async (square: Square) => {
     console.log('Clicked square:', square);
     
-    // Clear AI move destination highlight on any click
-    setAIMoveDestinationSquare(null);
     
     // Prevent moves if orchestrator is not ready
     if (!orchestratorReady || !orchestrator) {
@@ -350,8 +336,6 @@ const GameContainer: React.FC = () => {
             selectedSquare={selectedSquare}
             validMoves={validMoves}
             checkSquare={getCheckSquare()}
-            aiThinkingSquare={aiThinkingSquare}
-            aiMoveDestinationSquare={aiMoveDestinationSquare}
             showStartingPosition={false} // Use actual game state instead
           />
         </div>

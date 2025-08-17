@@ -25,6 +25,7 @@ const GameContainer: React.FC = () => {
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [validMoves, setValidMoves] = useState<Square[]>([]);
   const [gameState, setGameState] = useState<GameState | null>(null);
+  const [aiMoveDestination, setAiMoveDestination] = useState<Square | null>(null);
 
   // AI state
   const [gameMode, setGameMode] = useState<GameMode | null>(null); // Start with no mode selected
@@ -108,6 +109,7 @@ const GameContainer: React.FC = () => {
     // Clear UI state
     setSelectedSquare(null);
     setValidMoves([]);
+    setAiMoveDestination(null);
     
     // Show modal to select new game mode
     setShowGameModeModal(true);
@@ -169,12 +171,27 @@ const GameContainer: React.FC = () => {
           setIsAIThinking(true);
           setAIEngineStatus('thinking');
           
+          // Get current game state before AI move
+          const preAIMoveState = orchestrator?.getGameState();
+          const moveCountBefore = preAIMoveState?.gameState?.moves?.length || 0;
+          
           await orchestrator.triggerAIMove();
           setIsAIThinking(false);
           setAIEngineStatus('ready');
           
-          // Update game state and get the last move
+          // Update game state and capture AI move
           updateGameState();
+          
+          // Get the last move to highlight AI's destination
+          const postAIMoveState = orchestrator?.getGameState();
+          const newMoves = postAIMoveState?.gameState?.moves || [];
+          
+          if (newMoves.length > moveCountBefore) {
+            const lastMove = newMoves[newMoves.length - 1];
+            if (lastMove && lastMove.to) {
+              setAiMoveDestination(lastMove.to);
+            }
+          }
           
         } catch (error) {
           console.error('AI move failed:', error);
@@ -226,6 +243,8 @@ const GameContainer: React.FC = () => {
   const handleSquareClickAsync = async (square: Square) => {
     console.log('Clicked square:', square);
     
+    // Clear AI move highlight when user clicks any square
+    setAiMoveDestination(null);
     
     // Prevent moves if orchestrator is not ready
     if (!orchestratorReady || !orchestrator) {
@@ -336,6 +355,7 @@ const GameContainer: React.FC = () => {
             selectedSquare={selectedSquare}
             validMoves={validMoves}
             checkSquare={getCheckSquare()}
+            aiMoveSquare={aiMoveDestination}
             showStartingPosition={false} // Use actual game state instead
           />
         </div>

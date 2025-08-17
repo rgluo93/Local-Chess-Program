@@ -232,7 +232,7 @@
 - [ ] Game mode selection works correctly
 - [ ] AI thinking visualization displays candidate moves with arrows
 - [ ] UI remains responsive during AI calculations
-- [ ] **✅ Test Scenario #30**: AI Thinking Visualization (arrows display)
+- [ ] **✅ Test Scenario #30**: AI Move Visualization (square highlighted)
 
 ### 3.4 AI Move Processing & Game Flow
 - [ ] Implement AI move queue system - Handle asynchronous AI moves
@@ -258,7 +258,7 @@
   - [ ] **✅ Test Scenario #27**: AI vs Human Complete Game
   - [ ] **✅ Test Scenario #28**: Engine Error Recovery
   - [ ] **✅ Test Scenario #29**: AI Performance Benchmarking
-  - [ ] **✅ Test Scenario #30**: AI Thinking Visualization (arrows display)
+  - [ ] **✅ Test Scenario #30**: AI Move Visualization (square highlighted)
 - [ ] Integration testing with existing Phase 1-2 components
 - [ ] Performance optimization - Ensure AI doesn't block UI (≤100ms response time maintained)
 

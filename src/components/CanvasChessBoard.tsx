@@ -18,6 +18,7 @@ export interface CanvasBoardProps {
   selectedSquare?: Square | null;
   validMoves?: Square[];
   checkSquare?: Square | null;
+  aiMoveSquare?: Square | null;
 }
 
 
@@ -33,7 +34,8 @@ export const CanvasChessBoard = React.forwardRef<HTMLCanvasElement, CanvasBoardP
   onSquareClick,
   selectedSquare,
   validMoves = [],
-  checkSquare = null
+  checkSquare = null,
+  aiMoveSquare = null
 }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const actualRef = ref || canvasRef;
@@ -147,6 +149,31 @@ export const CanvasChessBoard = React.forwardRef<HTMLCanvasElement, CanvasBoardP
       }
     }
     
+    // Draw AI move highlight (destination square) - draw before valid moves for layering
+    if (aiMoveSquare) {
+      const { file, rank } = parseSquare(aiMoveSquare);
+      const x = file * squareSize + offset;
+      const y = rank * squareSize + offset;
+      
+      // Green highlight for AI move destination
+      ctx.fillStyle = COLORS.FEEDBACK.AI_MOVE;
+      ctx.globalAlpha = 0.7;
+      ctx.fillRect(x, y, squareSize, squareSize);
+      
+      // Add border for clarity
+      ctx.strokeStyle = COLORS.FEEDBACK.AI_MOVE;
+      ctx.lineWidth = 3;
+      ctx.globalAlpha = 0.9;
+      if (ctx.strokeRect) {
+        ctx.strokeRect(x + 2, y + 2, squareSize - 4, squareSize - 4);
+      } else {
+        // Fallback for environments without strokeRect
+        ctx.beginPath();
+        ctx.rect(x + 2, y + 2, squareSize - 4, squareSize - 4);
+        ctx.stroke();
+      }
+    }
+    
     // Draw valid move highlights with distinct visual treatment
     const currentValidMoves = validMoves;
     
@@ -219,7 +246,7 @@ export const CanvasChessBoard = React.forwardRef<HTMLCanvasElement, CanvasBoardP
       }
     }
 
-  }, [size, squareSize, labelOffset, canvasSize, imagesLoaded, showStartingPosition, boardState, gameState, selectedSquare, validMoves, checkSquare]);
+  }, [size, squareSize, labelOffset, canvasSize, imagesLoaded, showStartingPosition, boardState, gameState, selectedSquare, validMoves, checkSquare, aiMoveSquare]);
 
 
   const drawBoard = (ctx: CanvasRenderingContext2D, boardSize: number, offset: number) => {

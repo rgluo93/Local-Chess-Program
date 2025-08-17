@@ -29,6 +29,7 @@ export const COLORS = {
     CHECK: '#FF8A65',      // Soft orange for check highlight
     LAST_MOVE: '#F4E04D',   // Yellow for last move highlight
     SELECTED: '#7CB342',    // Green for selected square
+    AI_MOVE: '#4CAF50',     // Green for AI move destination
   },
   TYPOGRAPHY: {
     FONT_FAMILY: "'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
@@ -64,6 +65,7 @@ export const CSS_VARIABLES = {
   '--color-check': COLORS.FEEDBACK.CHECK,
   '--color-last-move': COLORS.FEEDBACK.LAST_MOVE,
   '--color-selected': COLORS.FEEDBACK.SELECTED,
+  '--color-ai-move': COLORS.FEEDBACK.AI_MOVE,
   
   // Hover state
   '--color-hover': COLORS.ACCENT.MUTED_GOLD,

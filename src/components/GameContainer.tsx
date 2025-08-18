@@ -390,6 +390,7 @@ const GameContainer: React.FC = () => {
       {showAnalysis && gameState && (
         <GameAnalysis
           pgn={gameState.pgn || ''}
+          gameResult={gameState.result}
           onClose={() => setShowAnalysis(false)}
         />
       )}

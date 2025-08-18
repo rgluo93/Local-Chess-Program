@@ -14,10 +14,11 @@ const ANALYSIS_DEPTH = 20;
 
 interface GameAnalysisProps {
   pgn: string;
+  gameResult?: string; // Add optional game result from main game
   onClose: () => void;
 }
 
-const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, onClose }) => {
+const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, gameResult, onClose }) => {
   const [currentMoveIndex, setCurrentMoveIndex] = useState(0);
   const [chess] = useState(() => new Chess());
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -30,6 +31,8 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, onClose }) => {
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [moveFens, setMoveFens] = useState<string[]>([]);
   const engineRef = useRef<StockfishEngine | null>(null);
+  const [engineReady, setEngineReady] = useState<boolean>(false);
+  const needsInitialAnalysis = useRef<boolean>(true);
 
   // Initialize chess game from PGN
   useEffect(() => {
@@ -82,6 +85,9 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, onClose }) => {
       setMoves(gameHistory);
       setMoveFens(fens);
       
+      console.log('📋 PGN loaded, FENs calculated:', fens.length, 'positions');
+      console.log('📋 First FEN (starting position):', fens[0]);
+      
       // Set to starting position
       chess.reset();
       updateGameState();
@@ -113,7 +119,14 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, onClose }) => {
         });
         
         engineRef.current = engine;
-        console.log('Stockfish engine initialized for analysis');
+        setEngineReady(true);
+        console.log('🔧 Stockfish engine initialized for analysis');
+        console.log('🔧 Engine ref set:', !!engineRef.current);
+        console.log('🔧 Engine ready state set to true');
+        
+        // Mark that we need to trigger initial analysis when FENs are ready
+        needsInitialAnalysis.current = true;
+        console.log('🔧 needsInitialAnalysis set to true');
       } catch (error) {
         console.error('Failed to initialize Stockfish engine:', error);
       }
@@ -172,9 +185,16 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, onClose }) => {
 
   // Evaluate specific position with Stockfish at depth 20
   const evaluatePosition = async (fen: string) => {
-    if (!engineRef.current || !fen) return;
+    console.log('📢 evaluatePosition called with FEN:', fen);
+    console.log('📢 Engine available:', !!engineRef.current);
+    
+    if (!engineRef.current || !fen) {
+      console.log('❌ Cannot evaluate - missing engine or FEN');
+      return;
+    }
 
     try {
+      console.log('✅ Starting evaluation process');
       setIsEvaluating(true);
       
       // Reset evaluation state
@@ -240,13 +260,27 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, onClose }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentMoveIndex, moves.length]);
 
-  // Evaluate initial position when engine is ready
+  // Trigger initial analysis when both engine and FENs are ready
   useEffect(() => {
-    if (engineRef.current && moveFens.length > 0) {
-      // Evaluate starting position
-      evaluatePosition(moveFens[0]);
+    console.log('🔍 Checking auto-trigger conditions:', {
+      engineReady,
+      fensLength: moveFens.length,
+      needsAnalysis: needsInitialAnalysis.current,
+      currentMoveIndex
+    });
+    
+    if (engineReady && moveFens.length > 0 && needsInitialAnalysis.current) {
+      console.log('🎯 Both engine and FENs ready - triggering initial analysis of starting position');
+      console.log('🎯 Starting position FEN:', moveFens[0]);
+      needsInitialAnalysis.current = false; // Prevent multiple triggers
+      
+      // Use setTimeout to ensure all state updates are processed
+      setTimeout(() => {
+        console.log('🚀 Executing evaluatePosition for starting position');
+        evaluatePosition(moveFens[0]);
+      }, 50);
     }
-  }, [engineRef.current, moveFens.length]); // Evaluate when engine is ready and FENs are loaded
+  }, [engineReady, moveFens.length, currentMoveIndex]); // Use engineReady state instead of ref
 
   // Format evaluation for display
   const formatEvaluation = (evaluation: number | null, mateIn: number | null = null): string => {
@@ -269,6 +303,54 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, onClose }) => {
     }
   };
 
+  // Get game over state from current position
+  const getGameOverState = (): { isGameOver: boolean; type: 'checkmate' | 'stalemate' | null; winner: 'white' | 'black' | null } => {
+    if (chess.isCheckmate()) {
+      return {
+        isGameOver: true,
+        type: 'checkmate',
+        winner: chess.turn() === 'w' ? 'black' : 'white' // Current turn lost
+      };
+    }
+    if (chess.isStalemate()) {
+      return {
+        isGameOver: true,
+        type: 'stalemate',
+        winner: null
+      };
+    }
+    return { isGameOver: false, type: null, winner: null };
+  };
+
+  // Calculate evaluation bar percentage (0-100, where 50 is equal position)
+  const getEvaluationPercentage = (evaluation: number | null): number => {
+    const gameOverState = getGameOverState();
+    
+    // Handle game over states
+    if (gameOverState.isGameOver) {
+      if (gameOverState.type === 'checkmate') {
+        return gameOverState.winner === 'white' ? 100 : 0;
+      }
+      if (gameOverState.type === 'stalemate') {
+        return 50; // Draw - equal bar
+      }
+    }
+    
+    if (evaluation === null) return 50;
+    
+    // For mate scores, fill entire bar
+    if (Math.abs(evaluation) >= 999999) {
+      return evaluation > 0 ? 100 : 0;
+    }
+    
+    // Convert centipawns to percentage
+    // Use a logarithmic scale for better visual representation
+    // Cap at +/- 500 centipawns (5 pawns) for reasonable display
+    const clampedEval = Math.max(-500, Math.min(500, evaluation));
+    const percentage = 50 + (clampedEval / 500) * 45; // 5-95% range
+    return Math.max(5, Math.min(95, percentage));
+  };
+
   return (
     <div className="game-analysis-overlay">
       <div className="game-analysis-container">
@@ -279,27 +361,98 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, onClose }) => {
         
         <div className="analysis-content">
           <div className="evaluation-section">
-            <div className="evaluation-box">
+            <div className="evaluation-bar-container">
               <h4>Position Evaluation</h4>
-              <div className="evaluation-score">
-                {isEvaluating && evaluation === null ? (
-                  <span className="evaluating">Starting...</span>
-                ) : (
-                  <span className={`score ${evaluation !== null && evaluation > 0 ? 'positive' : evaluation !== null && evaluation < 0 ? 'negative' : ''}`}>
-                    {formatEvaluation(evaluation, mateInMoves)}
-                  </span>
-                )}
+              <div className="evaluation-bar">
+                <div className="eval-bar-bg">
+                  <div className="black-section"></div>
+                  <div 
+                    className="white-section" 
+                    style={{ 
+                      height: `${getEvaluationPercentage(evaluation)}%`,
+                      minHeight: getEvaluationPercentage(evaluation) === 0 ? '0px' : '20px'
+                    }}
+                  >
+                    {(() => {
+                      const gameOverState = getGameOverState();
+                      const evalPercentage = getEvaluationPercentage(evaluation);
+                      
+                      if (gameOverState.isGameOver) {
+                        // Show game result in bottom eval text area
+                        // Only show if white section has some height (not black mate)
+                        if (evalPercentage > 0) {
+                          if (gameOverState.type === 'checkmate') {
+                            const resultText = gameOverState.winner === 'white' ? '1-0' : '0-1';
+                            return (
+                              <div className="eval-score-text game-result">
+                                {resultText}
+                              </div>
+                            );
+                          } else if (gameOverState.type === 'stalemate') {
+                            return (
+                              <div className="eval-score-text game-result stalemate-result">
+                                <span className="fraction">
+                                  <span className="numerator">1</span>
+                                  <span className="denominator">2</span>
+                                </span>
+                                <span className="dash">-</span>
+                                <span className="fraction">
+                                  <span className="numerator">1</span>
+                                  <span className="denominator">2</span>
+                                </span>
+                              </div>
+                            );
+                          }
+                        }
+                        return null;
+                      } else {
+                        return (
+                          <div className="eval-score-text">
+                            {isEvaluating && evaluation === null ? (
+                              "..."
+                            ) : (
+                              formatEvaluation(evaluation, mateInMoves)
+                            )}
+                          </div>
+                        );
+                      }
+                    })()}
+                  </div>
+                  {(() => {
+                    const gameOverState = getGameOverState();
+                    if (gameOverState.isGameOver) {
+                      return (
+                        <div className="game-over-text-overlay">
+                          {gameOverState.type === 'checkmate' ? 'CHECKMATE' : 'STALEMATE'}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                  <div className="eval-bar-midline"></div>
+                  {(() => {
+                    const gameOverState = getGameOverState();
+                    const evalPercentage = getEvaluationPercentage(evaluation);
+                    
+                    // Show game result at bottom for black checkmate (when white section is 0%)
+                    if (gameOverState.isGameOver && evalPercentage === 0) {
+                      if (gameOverState.type === 'checkmate') {
+                        return (
+                          <div className="eval-score-text game-result black-mate-result">
+                            0-1
+                          </div>
+                        );
+                      }
+                    }
+                    return null;
+                  })()}
+                </div>
               </div>
               <div className="evaluation-info">
                 {isEvaluating ? (
                   <small>Analyzing depth: {currentDepth}/{ANALYSIS_DEPTH}</small>
                 ) : (
                   <small>Depth: {currentDepth}</small>
-                )}
-                {finalEvaluation !== null && (
-                  <div className="final-eval-indicator">
-                    <small>✓ Final: {formatEvaluation(finalEvaluation, finalMateInMoves)}</small>
-                  </div>
                 )}
               </div>
             </div>
@@ -360,35 +513,20 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, onClose }) => {
             </div>
             {/* Always show result if game has ended */}
             {(() => {
-              // Check if we have moves and determine final result
-              if (moves.length === 0) return null;
-              
-              // Create temp chess instance to get final result
-              const tempChess = new Chess();
-              try {
-                tempChess.loadPgn(pgn);
-                let resultText = null;
-                
-                if (tempChess.isCheckmate()) {
-                  resultText = tempChess.turn() === 'w' ? '0-1 (Black Wins)' : '1-0 (White Wins)';
-                } else if (tempChess.isStalemate()) {
-                  resultText = '½-½ (Stalemate)';
-                } else if (tempChess.isDraw()) {
-                  resultText = '½-½ (Draw)';
-                } else if (tempChess.isGameOver()) {
-                  resultText = '½-½ (Draw)';
-                }
-                
-                return resultText ? (
+              // Use the exact same result formatting as displayed in the main game interface
+              if (gameResult && gameResult !== 'ongoing') {
+                return (
                   <div className="game-status">
                     <div className="status-item result-display">
-                      Result: {resultText}
+                      Result: {gameResult === 'white_wins' ? '1-0 (White Wins)' : 
+                              gameResult === 'black_wins' ? '0-1 (Black Wins)' : 
+                              gameResult === 'draw' ? '½-½ (Draw)' : 
+                              gameResult}
                     </div>
                   </div>
-                ) : null;
-              } catch (error) {
-                return null;
+                );
               }
+              return null;
             })()}
           </div>
         </div>

@@ -38,6 +38,14 @@ export class StockfishEngine {
   }
 
   /**
+   * Get whose turn it is from FEN string
+   */
+  private getTurnFromFEN(fen: string): 'w' | 'b' {
+    const parts = fen.split(' ');
+    return parts[1] as 'w' | 'b';
+  }
+
+  /**
    * Initialize the Stockfish engine
    */
   async initialize(): Promise<void> {
@@ -383,7 +391,20 @@ export class StockfishEngine {
         console.log('📋 Parsed info result:', info);
         
         if (info && info.depth && info.depth > bestInfo.depth) {
-          const score = info.score?.cp || (info.score?.mate ? (info.score.mate > 0 ? 999999 : -999999) : 0);
+          let score = info.score?.cp || 0;
+          
+          // Handle mate scores with proper turn consideration
+          if (info.score?.mate) {
+            const currentTurn = this.getTurnFromFEN(this.currentPosition);
+            if (currentTurn === 'w') {
+              // White to move: positive mate = white advantage
+              score = info.score.mate > 0 ? 999999 : -999999;
+            } else {
+              // Black to move: positive mate = black advantage (negative for white perspective)
+              score = info.score.mate > 0 ? -999999 : 999999;
+            }
+          }
+          
           console.log('🎯 Updating bestInfo with score:', score, 'from depth:', info.depth);
           
           bestInfo = {
@@ -461,8 +482,21 @@ export class StockfishEngine {
       console.log('📡 Sending evaluation to UI:', info.score.cp, 'at depth:', info.depth);
       this.evaluationCallback(info.score.cp, info.depth);
     } else if (this.evaluationCallback && info.depth && info.score?.mate !== undefined) {
-      const mateScore = info.score.mate > 0 ? 999999 : -999999;
-      console.log('📡 Sending mate evaluation to UI:', mateScore, 'at depth:', info.depth, 'mate in:', Math.abs(info.score.mate));
+      // Mate scores are relative to the current player to move
+      // If it's white's turn: mate 5 = white mates in 5, mate -5 = black mates in 5
+      // If it's black's turn: mate 5 = black mates in 5, mate -5 = white mates in 5
+      const currentTurn = this.getTurnFromFEN(this.currentPosition);
+      let mateScore: number;
+      
+      if (currentTurn === 'w') {
+        // White to move: positive mate = white advantage, negative = black advantage
+        mateScore = info.score.mate > 0 ? 999999 : -999999;
+      } else {
+        // Black to move: positive mate = black advantage, negative = white advantage
+        mateScore = info.score.mate > 0 ? -999999 : 999999;
+      }
+      
+      console.log('📡 Sending mate evaluation to UI:', mateScore, 'at depth:', info.depth, 'mate in:', Math.abs(info.score.mate), 'current turn:', currentTurn);
       this.evaluationCallback(mateScore, info.depth, Math.abs(info.score.mate));
     }
     

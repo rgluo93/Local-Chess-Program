@@ -391,6 +391,8 @@ const GameContainer: React.FC = () => {
         <GameAnalysis
           pgn={gameState.pgn || ''}
           gameResult={gameState.result}
+          gameStatus={gameState.status}
+          drawReason={orchestratorReady && orchestrator ? orchestrator.getDrawReason() : undefined}
           onClose={() => setShowAnalysis(false)}
         />
       )}

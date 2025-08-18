@@ -602,6 +602,11 @@ export class ChessGameOrchestrator implements ChessGameOrchestratorAPI {
     return this.gameEngine.getGameResult();
   }
 
+  getDrawReason(): string | null {
+    this.ensureInitialized();
+    return this.gameEngine.getDrawReason();
+  }
+
   // ==========================================================================
   // MOVE HISTORY API
   // ==========================================================================

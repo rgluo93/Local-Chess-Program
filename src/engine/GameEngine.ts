@@ -33,11 +33,15 @@ export interface MoveResult {
 export class GameEngine {
   private chess: Chess;
   private moveHistory: Move[] = [];
+  private positionHistory: string[] = []; // Track FEN positions for three-fold repetition
   private _instanceId: string; // For debugging
 
   constructor(fen?: string) {
     this.chess = new Chess(fen);
     this._instanceId = `engine-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+    
+    // Initialize position history with starting position
+    this.positionHistory.push(this.normalizeFENForRepetition(this.chess.fen()));
   }
 
   // ==========================================================================
@@ -97,6 +101,10 @@ export class GameEngine {
 
       // Add to our move history
       this.moveHistory.push(move);
+      
+      // Add position to our position history for three-fold repetition tracking
+      const normalizedFEN = this.normalizeFENForRepetition(this.chess.fen());
+      this.positionHistory.push(normalizedFEN);
 
       return {
         isValid: true,
@@ -164,6 +172,7 @@ export class GameEngine {
       // Restore original position
       this.chess.load(originalFen);
       this.moveHistory.pop(); // Remove the test move
+      this.positionHistory.pop(); // Remove the test position
 
       if (moveResult.isValid) {
         return {
@@ -181,6 +190,9 @@ export class GameEngine {
     } catch (error) {
       // Restore position on any error
       this.chess.load(originalFen);
+      // Remove any added entries if move was partially processed
+      if (this.moveHistory.length > 0) this.moveHistory.pop();
+      if (this.positionHistory.length > 0) this.positionHistory.pop();
       return {
         isValid: false,
         errorType: 'illegal',
@@ -211,7 +223,8 @@ export class GameEngine {
   getGameStatus(): GameStatus {
     if (this.chess.isCheckmate()) return 'checkmate';
     if (this.chess.isStalemate()) return 'stalemate';
-    if (this.chess.isDraw()) return 'draw';
+    // Check all draw conditions - use our manual three-fold repetition check
+    if (this.chess.isDraw() || this.isThreefoldRepetitionManual()) return 'draw';
     if (this.chess.inCheck()) return 'check';
     return 'playing';
   }
@@ -223,10 +236,43 @@ export class GameEngine {
     if (this.chess.isCheckmate()) {
       return this.chess.turn() === 'w' ? '0-1' : '1-0';
     }
-    if (this.chess.isStalemate() || this.chess.isDraw()) {
+    if (this.chess.isStalemate() || this.chess.isDraw() || this.isThreefoldRepetitionManual()) {
       return '1/2-1/2';
     }
     return '*';
+  }
+
+  /**
+   * Get specific draw reason if game is drawn
+   */
+  getDrawReason(): string | null {
+    if (!this.chess.isDraw() && !this.isThreefoldRepetitionManual()) {
+      return null;
+    }
+    
+    if (this.isThreefoldRepetitionManual()) {
+      return 'threefold_repetition';
+    }
+    if (this.chess.isInsufficientMaterial()) {
+      return 'insufficient_material';
+    }
+    // Note: Chess.js doesn't have isDrawByFiftyMoves() exposed directly
+    // but we can infer it if isDraw() is true but not the other conditions
+    return 'fifty_move_rule';
+  }
+
+  /**
+   * Check if game is drawn by three-fold repetition (using our manual implementation)
+   */
+  isThreefoldRepetition(): boolean {
+    return this.isThreefoldRepetitionManual();
+  }
+
+  /**
+   * Check if game is drawn by insufficient material
+   */
+  isInsufficientMaterial(): boolean {
+    return this.chess.isInsufficientMaterial();
   }
 
   /**
@@ -312,6 +358,7 @@ export class GameEngine {
   reset(): void {
     this.chess.reset();
     this.moveHistory = [];
+    this.resetPositionHistory();
   }
 
   /**
@@ -321,6 +368,7 @@ export class GameEngine {
     try {
       this.chess.load(fen);
       this.moveHistory = []; // Reset move history when loading new position
+      this.resetPositionHistory(); // Reset position history when loading new position
       return true;
     } catch (error) {
       return false;
@@ -415,6 +463,58 @@ export class GameEngine {
 
   public getInstanceId(): string {
     return this._instanceId;
+  }
+
+  // ==========================================================================
+  // MANUAL THREE-FOLD REPETITION IMPLEMENTATION
+  // ==========================================================================
+
+  /**
+   * Check if current position has occurred 3 or more times (manual implementation)
+   */
+  private isThreefoldRepetitionManual(): boolean {
+    if (this.positionHistory.length < 3) {
+      return false;
+    }
+
+    const currentPosition = this.positionHistory[this.positionHistory.length - 1];
+    const occurrences = this.countPositionOccurrences(currentPosition);
+    
+    return occurrences >= 3;
+  }
+
+  /**
+   * Count how many times a normalized position appears in history
+   */
+  private countPositionOccurrences(normalizedFEN: string): number {
+    return this.positionHistory.filter(fen => fen === normalizedFEN).length;
+  }
+
+  /**
+   * Normalize FEN for three-fold repetition comparison
+   * Only considers: board position, active color, and castling rights
+   * Ignores: en passant, halfmove clock, fullmove number
+   */
+  private normalizeFENForRepetition(fen: string): string {
+    const parts = fen.split(' ');
+    // Return: position, active color, castling rights
+    return `${parts[0]} ${parts[1]} ${parts[2]}`;
+  }
+
+  /**
+   * Get the position history (for debugging)
+   */
+  public getPositionHistory(): string[] {
+    return [...this.positionHistory];
+  }
+
+  /**
+   * Reset position history (called when starting new games)
+   */
+  public resetPositionHistory(): void {
+    this.positionHistory = [];
+    // Add current position
+    this.positionHistory.push(this.normalizeFENForRepetition(this.chess.fen()));
   }
 
 }

@@ -15,10 +15,12 @@ const ANALYSIS_DEPTH = 20;
 interface GameAnalysisProps {
   pgn: string;
   gameResult?: string; // Add optional game result from main game
+  gameStatus?: string; // Add optional game status for specific ending reasons
+  drawReason?: string; // Add optional draw reason for specific draw types
   onClose: () => void;
 }
 
-const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, gameResult, onClose }) => {
+const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, gameResult, gameStatus, drawReason, onClose }) => {
   const [currentMoveIndex, setCurrentMoveIndex] = useState(0);
   const [chess] = useState(() => new Chess());
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -322,6 +324,48 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, gameResult, onClose })
     return { isGameOver: false, type: null, winner: null };
   };
 
+  // Get specific game ending text for the evaluation bar
+  const getGameEndingText = (): string | null => {
+    const gameOverState = getGameOverState();
+    
+    // If we're at a position that's naturally game over (checkmate/stalemate)
+    if (gameOverState.isGameOver) {
+      if (gameOverState.type === 'checkmate') {
+        return 'CHECKMATE';
+      }
+      if (gameOverState.type === 'stalemate') {
+        return 'STALEMATE';
+      }
+    }
+    
+    // If game ended by resignation (passed from main game)
+    if (gameStatus === 'resigned') {
+      if (gameResult === 'white_wins' || gameResult === '1-0') {
+        return 'BLACK RESIGNS';
+      }
+      if (gameResult === 'black_wins' || gameResult === '0-1') {
+        return 'WHITE RESIGNS';
+      }
+    }
+    
+    // If game ended by draw (passed from main game)
+    if (gameStatus === 'draw' || gameResult === 'draw' || gameResult === '1/2-1/2') {
+      if (drawReason === 'threefold_repetition') {
+        return '3-FOLD REPETITION';
+      }
+      if (drawReason === 'fifty_move_rule') {
+        return '50-MOVE RULE';
+      }
+      if (drawReason === 'insufficient_material') {
+        return 'INSUFFICIENT MATERIAL';
+      }
+      // Fallback for other draw types
+      return 'DRAW';
+    }
+    
+    return null;
+  };
+
   // Calculate evaluation bar percentage (0-100, where 50 is equal position)
   const getEvaluationPercentage = (evaluation: number | null): number => {
     const gameOverState = getGameOverState();
@@ -420,6 +464,19 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, gameResult, onClose })
                   </div>
                   {(() => {
                     const gameOverState = getGameOverState();
+                    const isAtFinalPosition = currentMoveIndex === moves.length;
+                    const gameEndingText = getGameEndingText();
+                    
+                    // If we're at the final position and have a specific ending reason, show that
+                    if (isAtFinalPosition && gameEndingText && (gameResult !== 'ongoing' && gameResult !== '*')) {
+                      return (
+                        <div className="game-over-text-overlay">
+                          {gameEndingText}
+                        </div>
+                      );
+                    }
+                    
+                    // Otherwise, show current position analysis (checkmate/stalemate)
                     if (gameOverState.isGameOver) {
                       return (
                         <div className="game-over-text-overlay">

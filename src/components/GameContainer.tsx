@@ -7,6 +7,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { CanvasChessBoard } from './CanvasChessBoard';
 import GameControls from './GameControls';
 import MoveHistoryPanel from './MoveHistoryPanel';
+import GameAnalysis from './GameAnalysis';
 import { GameModeModal } from './GameModeModal';
 import { GameStateManager } from '../engine/GameStateManager';
 import { GameEngine } from '../engine/GameEngine';
@@ -35,6 +36,7 @@ const GameContainer: React.FC = () => {
 
   // Modal state
   const [showGameModeModal, setShowGameModeModal] = useState(true); // Show on first load
+  const [showAnalysis, setShowAnalysis] = useState(false);
 
   // Initialize orchestrator ONLY after game mode is selected
   const initializeOrchestrator = useCallback(async (selectedMode: GameMode) => {
@@ -141,6 +143,11 @@ const GameContainer: React.FC = () => {
       console.error('Error resigning game:', error);
     }
   }, [orchestrator, orchestratorReady, updateGameState, gameMode, gameState]);
+
+  // Handle analyze button click
+  const handleAnalyze = useCallback(() => {
+    setShowAnalysis(true);
+  }, []);
 
   // Handle AI state updates
   useEffect(() => {
@@ -363,6 +370,7 @@ const GameContainer: React.FC = () => {
           currentGame={gameState}
           onNewGameClick={handleNewGameClick}
           onResign={handleResign}
+          onAnalyze={handleAnalyze}
           isAIThinking={isAIThinking}
           gameMode={gameMode}
           aiEngineStatus={aiEngineStatus}
@@ -378,6 +386,13 @@ const GameContainer: React.FC = () => {
         onClose={() => setShowGameModeModal(false)}
         aiEngineStatus={aiEngineStatus}
       />
+      
+      {showAnalysis && gameState && (
+        <GameAnalysis
+          pgn={gameState.pgn || ''}
+          onClose={() => setShowAnalysis(false)}
+        />
+      )}
       
       {!orchestratorReady && (
         <div style={{

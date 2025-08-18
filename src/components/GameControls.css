@@ -65,6 +65,14 @@
   color: var(--color-primary-amber);
 }
 
+.control-buttons button.analyze-action {
+  background-color: #81D4FA;
+}
+
+.control-buttons button.analyze-action span {
+  color: white;
+}
+
 /* Disabled button styles */
 .control-buttons button:disabled {
   opacity: 0.5;

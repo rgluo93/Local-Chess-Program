@@ -13,6 +13,7 @@ interface GameControlsProps {
   onNewGameClick?: () => void;
   isAIThinking?: boolean;
   onResign?: () => void;
+  onAnalyze?: () => void;
   gameMode?: GameMode | null;
   aiEngineStatus?: 'ready' | 'thinking' | 'error' | 'offline';
 }
@@ -22,6 +23,7 @@ const GameControls: React.FC<GameControlsProps> = ({
   onNewGameClick,
   isAIThinking = false,
   onResign,
+  onAnalyze,
   gameMode = null,
   aiEngineStatus = 'offline'
 }) => {
@@ -48,6 +50,12 @@ const GameControls: React.FC<GameControlsProps> = ({
   const handleResign = () => {
     if (onResign) {
       onResign();
+    }
+  };
+
+  const handleAnalyze = () => {
+    if (onAnalyze) {
+      onAnalyze();
     }
   };
 
@@ -105,14 +113,25 @@ const GameControls: React.FC<GameControlsProps> = ({
         >
           <span data-testid="button-text-new-game">New Game</span>
         </button>
-        <button 
-          className="negative-action" 
-          onClick={handleResign}
-          disabled={resignDisabled}
-          title={!canResign ? "Cannot resign when game is not active" : isAIThinking ? "Cannot resign while AI is thinking" : gameMode === GameMode.HUMAN_VS_AI ? "Resign as human player" : "Resign the current game"}
-        >
-          <span data-testid="button-text-resign">Resign</span>
-        </button>
+        {isGameOver ? (
+          <button 
+            className="analyze-action" 
+            onClick={handleAnalyze}
+            disabled={isAIThinking}
+            title="Analyze the completed game"
+          >
+            <span data-testid="button-text-analyze">Analyze</span>
+          </button>
+        ) : (
+          <button 
+            className="negative-action" 
+            onClick={handleResign}
+            disabled={resignDisabled}
+            title={!canResign ? "Cannot resign when game is not active" : isAIThinking ? "Cannot resign while AI is thinking" : gameMode === GameMode.HUMAN_VS_AI ? "Resign as human player" : "Resign the current game"}
+          >
+            <span data-testid="button-text-resign">Resign</span>
+          </button>
+        )}
         <button 
           className="primary-bg" 
           data-testid="pgn-button" 

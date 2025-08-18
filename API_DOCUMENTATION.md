@@ -8,9 +8,11 @@ This document provides comprehensive API documentation for all core modules, int
 2. [Move Validation API](#move-validation-api)
 3. [State Management API](#state-management-api)
 4. [Persistence API](#persistence-api)
-5. [UI Component APIs](#ui-component-apis)
-6. [Utility Functions](#utility-functions)
-7. [Event System](#event-system)
+5. [AI Engine API](#ai-engine-api)
+6. [Game Analysis API](#game-analysis-api)
+7. [UI Component APIs](#ui-component-apis)
+8. [Utility Functions](#utility-functions)
+9. [Event System](#event-system)
 
 ## GameEngine API
 
@@ -399,6 +401,147 @@ interface GameControlsProps {
   className?: string;
 }
 ```
+
+## AI Engine API
+
+### Class: `StockfishEngine`
+
+Provides integration with Stockfish chess engine via WebAssembly and Web Workers.
+
+#### Constructor
+
+```typescript
+constructor()
+```
+
+Creates a new Stockfish engine instance. Must call `initialize()` before use.
+
+#### Core Methods
+
+##### `initialize(): Promise<void>`
+
+Initializes the Stockfish engine and UCI communication.
+
+**Returns**: Promise that resolves when engine is ready
+
+**Example**:
+```typescript
+const engine = new StockfishEngine();
+await engine.initialize();
+```
+
+##### `setPosition(fen: string): Promise<void>`
+
+Sets the current position for analysis or move generation.
+
+**Parameters**:
+- `fen`: Position in FEN notation
+
+**Example**:
+```typescript
+await engine.setPosition('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+```
+
+##### `getBestMove(options?: EngineOptions): Promise<Move>`
+
+Gets the best move from the current position.
+
+**Parameters**:
+- `options`: Engine configuration options
+
+```typescript
+interface EngineOptions {
+  depth?: number;
+  timeLimit?: number;
+  multiPV?: number;
+}
+```
+
+**Returns**: Promise resolving to the best move
+
+##### `evaluatePosition(depth: number): Promise<void>`
+
+Evaluates the current position with real-time updates via callback.
+
+**Parameters**:
+- `depth`: Analysis depth (default: 12)
+
+**Example**:
+```typescript
+engine.setEvaluationCallback((evaluation, depth, mateIn) => {
+  console.log(`Depth ${depth}: ${evaluation} centipawns`);
+});
+await engine.evaluatePosition(20);
+```
+
+##### `setEvaluationCallback(callback: EvaluationCallback): void`
+
+Sets callback for real-time evaluation updates.
+
+**Parameters**:
+- `callback`: Function to handle evaluation updates
+
+```typescript
+type EvaluationCallback = (evaluation: number, depth: number, mateIn?: number) => void;
+```
+
+##### `isReady(): boolean`
+
+Checks if engine is initialized and ready.
+
+##### `terminate(): void`
+
+Terminates the engine and cleans up resources.
+
+## Game Analysis API
+
+### Component: `GameAnalysis`
+
+Interactive post-game analysis interface with Stockfish integration.
+
+#### Props Interface
+
+```typescript
+interface GameAnalysisProps {
+  pgn: string;              // Game in PGN format
+  gameResult?: string;      // Game result from main interface
+  onClose: () => void;      // Close handler
+}
+```
+
+#### Features
+
+- **Real-time evaluation**: Progressive analysis from depth 1-20
+- **Interactive navigation**: Click moves or use arrow keys
+- **Visual evaluation bar**: Graphical position assessment
+- **Game result display**: Shows resignation, checkmate, stalemate results
+- **Keyboard shortcuts**: ←/→ and ↑/↓ for move navigation
+
+#### Constants
+
+```typescript
+const ANALYSIS_DEPTH = 20; // Configurable analysis depth
+```
+
+#### State Interface
+
+```typescript
+interface AnalysisState {
+  evaluation: number | null;           // Current position evaluation
+  currentDepth: number;               // Analysis depth progress
+  mateInMoves: number | null;         // Mate distance if applicable
+  currentMoveIndex: number;           // Current position in game
+  engineReady: boolean;               // Engine initialization status
+  isEvaluating: boolean;             // Analysis in progress
+}
+```
+
+#### Integration Points
+
+- **Engine**: Uses `StockfishEngine` for position analysis
+- **Chess Logic**: Integrates with Chess.js for position management
+- **UI**: Modal overlay with three-panel layout
+- **State**: Receives game data from `GameContainer`
 
 ### MoveHistory Component
 

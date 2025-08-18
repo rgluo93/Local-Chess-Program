@@ -391,11 +391,20 @@ export class StockfishEngine {
         console.log('📋 Parsed info result:', info);
         
         if (info && info.depth && info.depth > bestInfo.depth) {
-          let score = info.score?.cp || 0;
+          let score = 0;
+          const currentTurn = this.getTurnFromFEN(this.currentPosition);
           
-          // Handle mate scores with proper turn consideration
-          if (info.score?.mate) {
-            const currentTurn = this.getTurnFromFEN(this.currentPosition);
+          if (info.score?.cp !== undefined) {
+            // Centipawn scores are relative to the current player to move
+            if (currentTurn === 'w') {
+              // White to move: use cp score as-is
+              score = info.score.cp;
+            } else {
+              // Black to move: flip the sign for white's perspective
+              score = -info.score.cp;
+            }
+          } else if (info.score?.mate) {
+            // Handle mate scores with proper turn consideration
             if (currentTurn === 'w') {
               // White to move: positive mate = white advantage
               score = info.score.mate > 0 ? 999999 : -999999;
@@ -479,8 +488,22 @@ export class StockfishEngine {
     
     // Call evaluation callback if we have a score and depth
     if (this.evaluationCallback && info.depth && info.score?.cp !== undefined) {
-      console.log('📡 Sending evaluation to UI:', info.score.cp, 'at depth:', info.depth);
-      this.evaluationCallback(info.score.cp, info.depth);
+      // Centipawn scores are relative to the current player to move (same as mate scores)
+      // If it's white's turn: cp 150 = white advantage, cp -75 = black advantage  
+      // If it's black's turn: cp 150 = black advantage, cp -75 = white advantage
+      const currentTurn = this.getTurnFromFEN(this.currentPosition);
+      let adjustedScore: number;
+      
+      if (currentTurn === 'w') {
+        // White to move: use cp score as-is
+        adjustedScore = info.score.cp;
+      } else {
+        // Black to move: flip the sign for white's perspective
+        adjustedScore = -info.score.cp;
+      }
+      
+      console.log('📡 Sending centipawn evaluation to UI:', adjustedScore, 'at depth:', info.depth, 'current turn:', currentTurn, 'raw cp:', info.score.cp);
+      this.evaluationCallback(adjustedScore, info.depth);
     } else if (this.evaluationCallback && info.depth && info.score?.mate !== undefined) {
       // Mate scores are relative to the current player to move
       // If it's white's turn: mate 5 = white mates in 5, mate -5 = black mates in 5

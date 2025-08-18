@@ -66,6 +66,69 @@
   overflow: hidden;
 }
 
+.evaluation-section {
+  flex: 0 0 200px;
+  padding: 2rem;
+  background-color: #fafafa;
+  border-right: 1px solid #ddd;
+}
+
+.evaluation-box {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.evaluation-box h4 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.evaluation-score {
+  margin-bottom: 1rem;
+}
+
+.evaluation-score .score {
+  font-size: 2rem;
+  font-weight: bold;
+  font-family: 'Courier New', monospace;
+}
+
+.evaluation-score .score.positive {
+  color: #4CAF50;
+}
+
+.evaluation-score .score.negative {
+  color: #f44336;
+}
+
+.evaluation-score .evaluating {
+  font-size: 1rem;
+  color: #666;
+  font-style: italic;
+}
+
+.evaluation-info {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.final-eval-indicator {
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  background-color: #e8f5e8;
+  border-radius: 4px;
+  border: 1px solid #4CAF50;
+}
+
+.final-eval-indicator small {
+  color: #2E7D32;
+  font-weight: bold;
+}
+
 .board-section {
   flex: 2;
   display: flex;
@@ -193,6 +256,13 @@
 @media (max-width: 768px) {
   .analysis-content {
     flex-direction: column;
+  }
+  
+  .evaluation-section {
+    flex: none;
+    border-right: none;
+    border-bottom: 1px solid #ddd;
+    padding: 1rem;
   }
   
   .board-section {

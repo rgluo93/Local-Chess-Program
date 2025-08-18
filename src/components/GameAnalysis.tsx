@@ -2,11 +2,15 @@
  * GameAnalysis Component - Simple PGN navigation interface
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Chess } from 'chess.js';
 import { CanvasChessBoard } from './CanvasChessBoard';
+import { StockfishEngine } from '../ai/StockfishEngine';
 import type { GameState, Move } from '../types/Chess';
 import './GameAnalysis.css';
+
+// Analysis depth configuration - can be adjusted as needed
+const ANALYSIS_DEPTH = 20;
 
 interface GameAnalysisProps {
   pgn: string;
@@ -18,6 +22,14 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, onClose }) => {
   const [chess] = useState(() => new Chess());
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [moves, setMoves] = useState<Move[]>([]);
+  const [evaluation, setEvaluation] = useState<number | null>(null);
+  const [currentDepth, setCurrentDepth] = useState<number>(0);
+  const [finalEvaluation, setFinalEvaluation] = useState<number | null>(null);
+  const [mateInMoves, setMateInMoves] = useState<number | null>(null);
+  const [finalMateInMoves, setFinalMateInMoves] = useState<number | null>(null);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [moveFens, setMoveFens] = useState<string[]>([]);
+  const engineRef = useRef<StockfishEngine | null>(null);
 
   // Initialize chess game from PGN
   useEffect(() => {
@@ -54,7 +66,21 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, onClose }) => {
         notation: move.san
       }));
       
+      // Calculate FEN for each position
+      chess.reset();
+      const fens: string[] = [];
+      
+      // Starting position FEN
+      fens.push(chess.fen());
+      
+      // FEN after each move
+      for (const move of history) {
+        chess.move(move.san);
+        fens.push(chess.fen());
+      }
+      
       setMoves(gameHistory);
+      setMoveFens(fens);
       
       // Set to starting position
       chess.reset();
@@ -63,6 +89,46 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, onClose }) => {
       console.error('Error loading PGN:', error);
     }
   }, [pgn, chess]);
+
+  // Initialize Stockfish engine
+  useEffect(() => {
+    const initEngine = async () => {
+      try {
+        const engine = new StockfishEngine();
+        await engine.initialize();
+        
+        // Set up real-time evaluation callback
+        engine.setEvaluationCallback((evaluation: number, depth: number, mateIn?: number) => {
+          console.log('📊 Received real-time evaluation:', evaluation, 'at depth:', depth, 'mate in:', mateIn);
+          setEvaluation(evaluation);
+          setCurrentDepth(depth);
+          setMateInMoves(mateIn || null);
+          
+          // Store final evaluation when we reach target depth
+          if (depth === ANALYSIS_DEPTH) {
+            setFinalEvaluation(evaluation);
+            setFinalMateInMoves(mateIn || null);
+            console.log(`🏁 Final depth ${ANALYSIS_DEPTH} evaluation:`, evaluation, 'mate in:', mateIn);
+          }
+        });
+        
+        engineRef.current = engine;
+        console.log('Stockfish engine initialized for analysis');
+      } catch (error) {
+        console.error('Failed to initialize Stockfish engine:', error);
+      }
+    };
+
+    initEngine();
+
+    // Cleanup on unmount
+    return () => {
+      if (engineRef.current) {
+        engineRef.current.terminate();
+        engineRef.current = null;
+      }
+    };
+  }, []);
 
   // Convert chess.js board state to our GameState format
   const updateGameState = () => {
@@ -104,6 +170,39 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, onClose }) => {
     setGameState(newGameState);
   };
 
+  // Evaluate specific position with Stockfish at depth 20
+  const evaluatePosition = async (fen: string) => {
+    if (!engineRef.current || !fen) return;
+
+    try {
+      setIsEvaluating(true);
+      
+      // Reset evaluation state
+      setEvaluation(null);
+      setCurrentDepth(0);
+      setFinalEvaluation(null);
+      setMateInMoves(null);
+      setFinalMateInMoves(null);
+      
+      console.log(`Evaluating position at depth ${ANALYSIS_DEPTH}:`, fen);
+      await engineRef.current.setPosition(fen);
+      
+      // Start evaluation - results will come via callback in real-time
+      await engineRef.current.evaluatePosition(ANALYSIS_DEPTH);
+      
+    } catch (error) {
+      console.error('Error evaluating position:', error);
+      setEvaluation(null);
+      setCurrentDepth(0);
+      setFinalEvaluation(null);
+      setMateInMoves(null);
+      setFinalMateInMoves(null);
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
+
+
   // Navigate to specific move
   const goToMove = (moveIndex: number) => {
     if (moveIndex < 0 || moveIndex > moves.length) return;
@@ -118,6 +217,11 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, onClose }) => {
     
     setCurrentMoveIndex(moveIndex);
     updateGameState();
+    
+    // Evaluate the new position using the specific FEN
+    if (moveFens[moveIndex]) {
+      evaluatePosition(moveFens[moveIndex]);
+    }
   };
 
   // Handle keyboard navigation
@@ -136,6 +240,34 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, onClose }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentMoveIndex, moves.length]);
 
+  // Evaluate initial position when engine is ready
+  useEffect(() => {
+    if (engineRef.current && moveFens.length > 0) {
+      // Evaluate starting position
+      evaluatePosition(moveFens[0]);
+    }
+  }, [engineRef.current, moveFens.length]); // Evaluate when engine is ready and FENs are loaded
+
+  // Format evaluation for display
+  const formatEvaluation = (evaluation: number | null, mateIn: number | null = null): string => {
+    console.log('Formatting evaluation:', evaluation, 'mate in:', mateIn); // Debug
+    if (evaluation === null) return "...";
+    
+    // Check for mate scores
+    if (mateIn !== null) {
+      // This is a mate score - display as M# format
+      return `M${mateIn}`;
+    } else if (Math.abs(evaluation) >= 999999) {
+      // Fallback for mate scores without mateIn info
+      return 'M#';
+    } else {
+      // Regular centipawn evaluation
+      const pawns = (evaluation / 100).toFixed(2);
+      const result = evaluation >= 0 ? `+${pawns}` : pawns.toString();
+      console.log('Formatted result:', result); // Debug
+      return result;
+    }
+  };
 
   return (
     <div className="game-analysis-overlay">
@@ -146,6 +278,33 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, onClose }) => {
         </div>
         
         <div className="analysis-content">
+          <div className="evaluation-section">
+            <div className="evaluation-box">
+              <h4>Position Evaluation</h4>
+              <div className="evaluation-score">
+                {isEvaluating && evaluation === null ? (
+                  <span className="evaluating">Starting...</span>
+                ) : (
+                  <span className={`score ${evaluation !== null && evaluation > 0 ? 'positive' : evaluation !== null && evaluation < 0 ? 'negative' : ''}`}>
+                    {formatEvaluation(evaluation, mateInMoves)}
+                  </span>
+                )}
+              </div>
+              <div className="evaluation-info">
+                {isEvaluating ? (
+                  <small>Analyzing depth: {currentDepth}/{ANALYSIS_DEPTH}</small>
+                ) : (
+                  <small>Depth: {currentDepth}</small>
+                )}
+                {finalEvaluation !== null && (
+                  <div className="final-eval-indicator">
+                    <small>✓ Final: {formatEvaluation(finalEvaluation, finalMateInMoves)}</small>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          
           <div className="board-section">
             <CanvasChessBoard 
               gameState={gameState}

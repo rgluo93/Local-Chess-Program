@@ -24,9 +24,17 @@ export class StockfishEngine {
   private thinkingMoves: ThinkingMove[] = [];
   private pendingCommands = new Map<string, { resolve: Function; reject: Function; timeout?: NodeJS.Timeout }>();
   private commandId = 0;
+  private evaluationCallback: ((evaluation: number, depth: number, mateIn?: number) => void) | null = null;
 
   constructor() {
     // Constructor intentionally empty - initialization happens in initialize()
+  }
+
+  /**
+   * Set callback function for real-time evaluation updates
+   */
+  setEvaluationCallback(callback: (evaluation: number, depth: number, mateIn?: number) => void): void {
+    this.evaluationCallback = callback;
   }
 
   /**
@@ -141,9 +149,9 @@ export class StockfishEngine {
   }
 
   /**
-   * Evaluate the current position
+   * Evaluate the current position (real-time updates via callback)
    */
-  async evaluatePosition(): Promise<EvaluationResult> {
+  async evaluatePosition(depth: number = 12): Promise<void> {
     if (!this.isReady()) {
       throw new Error('Engine not ready');
     }
@@ -151,19 +159,12 @@ export class StockfishEngine {
     try {
       this.thinking = true;
       
-      // Request evaluation with moderate depth
-      const response = await this.sendCommand('go depth 12', 15000);
-      const bestMove = this.parseBestMove(response);
-      const evaluation = this.parseEvaluation(response);
-
-      return {
-        bestMove: this.convertUCIToMove(bestMove.move),
-        evaluation: evaluation.score,
-        depth: evaluation.depth,
-        nodes: evaluation.nodes,
-        time: evaluation.time,
-        principalVariation: evaluation.pv.map(move => this.convertUCIToMove(move))
-      };
+      // Request evaluation with specified depth - no timeout for deep analysis
+      const response = await this.sendCommand(`go depth ${depth}`, 0);
+      
+      // Info responses are automatically processed and sent to UI via callback
+      // in parseInfoResponse method - no need to return anything
+      
     } finally {
       this.thinking = false;
     }
@@ -235,10 +236,15 @@ export class StockfishEngine {
     return new Promise((resolve, reject) => {
       const id = `${command}_${this.commandId++}`;
       
-      const timeout = setTimeout(() => {
-        this.pendingCommands.delete(id);
-        reject(new Error(`Command timeout: ${command}`));
-      }, timeoutMs);
+      let timeout: NodeJS.Timeout | undefined;
+      
+      // Only set timeout if timeoutMs > 0
+      if (timeoutMs > 0) {
+        timeout = setTimeout(() => {
+          this.pendingCommands.delete(id);
+          reject(new Error(`Command timeout: ${command}`));
+        }, timeoutMs);
+      }
 
       this.pendingCommands.set(id, { resolve, reject, timeout });
       this.worker!.postMessage({ command, id });
@@ -366,15 +372,22 @@ export class StockfishEngine {
     time: number;
     pv: string[];
   } {
+    console.log('🔬 parseEvaluation received response:', response);
     const lines = response.split('\n');
     let bestInfo = { score: 0, depth: 0, nodes: 0, time: 0, pv: [] as string[] };
 
     for (const line of lines) {
       if (line.startsWith('info')) {
+        console.log('🔍 Processing info line:', line);
         const info = this.parseInfoResponse(line);
+        console.log('📋 Parsed info result:', info);
+        
         if (info && info.depth && info.depth > bestInfo.depth) {
+          const score = info.score?.cp || (info.score?.mate ? (info.score.mate > 0 ? 999999 : -999999) : 0);
+          console.log('🎯 Updating bestInfo with score:', score, 'from depth:', info.depth);
+          
           bestInfo = {
-            score: info.score?.cp || (info.score?.mate ? (info.score.mate > 0 ? 999999 : -999999) : 0),
+            score: score,
             depth: info.depth,
             nodes: info.nodes || 0,
             time: info.time || 0,
@@ -384,6 +397,7 @@ export class StockfishEngine {
       }
     }
 
+    console.log('🏆 Final bestInfo:', bestInfo);
     return bestInfo;
   }
 
@@ -395,25 +409,32 @@ export class StockfishEngine {
 
     const info: UCIInfo = {};
     const parts = response.split(' ');
+    console.log('🔍 Parsing info response:', response);
+    console.log('🔍 Split parts:', parts);
 
     for (let i = 1; i < parts.length; i++) {
       switch (parts[i]) {
         case 'depth':
           info.depth = parseInt(parts[++i]);
+          console.log('📊 Parsed depth:', info.depth);
           break;
         case 'time':
           info.time = parseInt(parts[++i]);
+          console.log('⏰ Parsed time:', info.time);
           break;
         case 'nodes':
           info.nodes = parseInt(parts[++i]);
+          console.log('🌳 Parsed nodes:', info.nodes);
           break;
         case 'score':
           info.score = {};
           i++;
           if (parts[i] === 'cp') {
             info.score.cp = parseInt(parts[++i]);
+            console.log('💯 Parsed centipawn score:', info.score.cp);
           } else if (parts[i] === 'mate') {
             info.score.mate = parseInt(parts[++i]);
+            console.log('♔ Parsed mate score:', info.score.mate);
           }
           break;
         case 'pv':
@@ -425,6 +446,7 @@ export class StockfishEngine {
               break;
             }
           }
+          console.log('🎯 Parsed PV:', info.pv);
           break;
         case 'multipv':
           info.multipv = parseInt(parts[++i]);
@@ -432,6 +454,18 @@ export class StockfishEngine {
       }
     }
 
+    console.log('✅ Final parsed info object:', info);
+    
+    // Call evaluation callback if we have a score and depth
+    if (this.evaluationCallback && info.depth && info.score?.cp !== undefined) {
+      console.log('📡 Sending evaluation to UI:', info.score.cp, 'at depth:', info.depth);
+      this.evaluationCallback(info.score.cp, info.depth);
+    } else if (this.evaluationCallback && info.depth && info.score?.mate !== undefined) {
+      const mateScore = info.score.mate > 0 ? 999999 : -999999;
+      console.log('📡 Sending mate evaluation to UI:', mateScore, 'at depth:', info.depth, 'mate in:', Math.abs(info.score.mate));
+      this.evaluationCallback(mateScore, info.depth, Math.abs(info.score.mate));
+    }
+    
     return info;
   }
 

@@ -125,6 +125,118 @@ npm run build
 
 ---
 
+## Evaluation Bar Game Ending Display
+
+### Overview
+The analysis interface evaluation bar features intelligent game ending detection and display, providing clear visual feedback about how games concluded with specific ending reasons shown in the middle text overlay.
+
+### Game Ending Text Display
+
+#### Resignation Endings
+- **"WHITE RESIGNS"**: Displayed when black wins due to white's resignation
+- **"BLACK RESIGNS"**: Displayed when white wins due to black's resignation
+- **Result Integration**: Coordinated with game result (1-0/0-1) display in evaluation sections
+
+#### Draw Endings
+- **"3-FOLD REPETITION"**: Shown for games ending by three-fold position repetition
+- **"50-MOVE RULE"**: Displayed for fifty-move rule draws
+- **"INSUFFICIENT MATERIAL"**: Shown when neither side has enough material to checkmate
+- **"DRAW"**: Generic fallback for other draw conditions
+
+#### Traditional Endings
+- **"CHECKMATE"**: Displayed for checkmate positions during analysis
+- **"STALEMATE"**: Shown for stalemate positions during analysis
+
+### Smart Display Logic
+
+#### Position-Aware Display
+- **Final Position**: Shows actual game ending reason when analyzing the final position
+- **Historical Analysis**: Shows current position status (checkmate/stalemate) when navigating through game history
+- **Context Switching**: Automatically switches between actual ending reason and position analysis
+
+#### Information Sources
+- **Game Status**: Uses `gameState.status` to identify resignation vs. natural endings
+- **Draw Reasons**: Leverages `GameEngine.getDrawReason()` for specific draw types
+- **Position Analysis**: Falls back to chess.js position evaluation for historical moves
+
+### Technical Implementation
+
+#### Component Architecture
+```
+GameContainer.tsx → GameAnalysis.tsx → Evaluation Bar Display
+     ↓                    ↓                    ↓
+gameState.status    getGameEndingText()   game-over-text-overlay
+gameState.result         ↓                    ↓
+drawReason          Smart Logic         Conditional Rendering
+```
+
+#### Data Flow
+```typescript
+// GameContainer passes comprehensive ending information
+<GameAnalysis
+  pgn={gameState.pgn || ''}
+  gameResult={gameState.result}
+  gameStatus={gameState.status}
+  drawReason={orchestrator.getDrawReason()}
+  onClose={() => setShowAnalysis(false)}
+/>
+
+// GameAnalysis determines appropriate display text
+const getGameEndingText = (): string | null => {
+  // Check for resignations
+  if (gameStatus === 'resigned') {
+    return gameResult === 'white_wins' ? 'BLACK RESIGNS' : 'WHITE RESIGNS';
+  }
+  
+  // Check for specific draw types
+  if (gameStatus === 'draw') {
+    switch (drawReason) {
+      case 'threefold_repetition': return '3-FOLD REPETITION';
+      case 'fifty_move_rule': return '50-MOVE RULE';
+      case 'insufficient_material': return 'INSUFFICIENT MATERIAL';
+      default: return 'DRAW';
+    }
+  }
+  
+  return null;
+};
+```
+
+#### Orchestrator Integration
+- **New API Method**: `ChessGameOrchestrator.getDrawReason()` exposes engine draw reasons
+- **State Coordination**: GameContainer accesses both game state and draw reason information
+- **Fallback Handling**: Graceful handling of missing or undefined ending information
+
+### UI Integration
+
+#### Visual Design
+- **Overlay Text**: Game ending text appears as centered overlay on evaluation bar
+- **Consistent Styling**: Matches existing checkmate/stalemate text formatting
+- **Color Coordination**: Text color adapts to evaluation bar background sections
+
+#### User Experience
+- **Immediate Feedback**: Game ending reason visible immediately at final position
+- **Historical Context**: Maintains position analysis capabilities during game review
+- **Clear Communication**: Unambiguous text clearly indicates specific ending type
+
+### Performance Considerations
+- **Lazy Evaluation**: Draw reason only fetched when analysis interface is opened
+- **Caching**: Game ending information cached for the duration of analysis session
+- **Minimal Overhead**: No additional computation during regular gameplay
+
+### Error Handling
+- **Missing Information**: Graceful fallback to generic endings when specific reasons unavailable
+- **Invalid States**: Validation of game status and result consistency
+- **API Failures**: Safe handling of orchestrator getDrawReason() failures
+
+### Future Enhancements
+- **Multilingual Support**: Internationalization of game ending text
+- **Custom Messages**: User-configurable ending messages
+- **Animation Effects**: Subtle animations for game ending text display
+- **Audio Feedback**: Optional sound effects for different ending types
+
+---
+
 ## Game Analysis Interface
 
 ### Overview
@@ -144,6 +256,8 @@ The chess program features a comprehensive game analysis interface that provides
 - **Scale**: Logarithmic scale for better visual representation (±500 centipawns)
 - **Game States**: Special handling for checkmate/stalemate positions
 - **Result Display**: Shows game results (1-0, 0-1, ½-½) in appropriate sections
+- **Game Ending Text**: Intelligent display of specific ending reasons (resignations, draw types)
+- **Context Awareness**: Shows actual game ending at final position, analysis results during navigation
 - **Midline**: Red line indicating equal position (0.00)
 
 #### Interactive Navigation
@@ -156,16 +270,20 @@ The chess program features a comprehensive game analysis interface that provides
 - **Resignation Support**: Displays resignation results using exact format from main game
 - **Status Consistency**: Matches main interface styling and terminology
 - **Result Types**: Handles all game endings (checkmate, stalemate, resignation, draw)
+- **Enhanced Display**: See "Evaluation Bar Game Ending Display" section for detailed ending text features
 
 ### Technical Implementation
 
 #### File Structure
 ```
 src/components/
-├── GameAnalysis.tsx          # Main analysis component
+├── GameAnalysis.tsx          # Main analysis component with enhanced game ending display
 ├── GameAnalysis.css          # Analysis interface styling
-├── GameContainer.tsx         # Integration with main game
+├── GameContainer.tsx         # Integration with main game, passes ending information
 └── GameControls.tsx          # Analyze button implementation
+
+src/orchestrator/
+└── ChessGameOrchestrator.ts  # Enhanced with getDrawReason() API method
 
 src/ai/
 └── StockfishEngine.ts        # Enhanced with evaluation callbacks
@@ -272,4 +390,4 @@ npm run build
 
 ---
 
-*Last updated: Implementation complete with all requested features*
+*Last updated: Three-fold repetition draw detection and evaluation bar game ending display features complete*

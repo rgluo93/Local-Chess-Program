@@ -160,9 +160,13 @@ interface MoveValidationResult {
   - Checkmate analysis
   - Stalemate detection
   - Draw by insufficient material
-  - Draw by threefold repetition
+  - **Draw by threefold repetition** (manual implementation with reliable position tracking)
   - Draw by 50-move rule
   - Resignation handling
+- **Enhanced Features**:
+  - Manual three-fold repetition detection replacing Chess.js implementation
+  - Position normalization using FEN components
+  - Specific draw reason identification for UI display
 
 ### 3.4 AI Engine Layer
 

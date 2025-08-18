@@ -10,6 +10,8 @@ A fully offline chess application supporting both human-vs-human and human-vs-AI
 🟢 **Complete Chess Implementation** (Phase 1 ✅ Complete)
 - Chess.js integration with custom GameEngine wrapper
 - All standard chess rules and move validation
+- **Manual three-fold repetition detection** with reliable position tracking
+- **Comprehensive draw condition handling** (50-move rule, insufficient material, stalemate)
 - 17 comprehensive unit tests passing
 - Interactive testing framework
 
@@ -44,8 +46,10 @@ A fully offline chess application supporting both human-vs-human and human-vs-AI
 - **Post-Game Analysis Interface with Real-Time Evaluation**
   - Interactive analysis modal with position evaluation
   - Visual evaluation bar with progressive depth analysis (1-20 plies)
+  - **Intelligent game ending display** with specific ending reasons
+  - **Smart text overlay** showing resignations, draw types, and game endings
   - Move navigation with keyboard shortcuts (arrow keys)
-  - Game result display with resignation support
+  - Game result display with comprehensive ending information
   - Stockfish.js v10.0.2 integration with WebAssembly
 
 🔲 **Advanced Interactions** (Phase 4 - Upcoming)
@@ -61,10 +65,11 @@ A fully offline chess application supporting both human-vs-human and human-vs-AI
 - PGN and FEN export functionality
 - **Complete component integration and state coordination**
 
-🔲 **Game Management** (Phase 6 - Upcoming)
+🟢 **Game Management** (Phase 6 ✅ Complete)
 - Complete move history with replay navigation (✅ backend ready)
-- Resignation and draw handling
-- Checkmate, stalemate, and draw condition detection (✅ backend ready)
+- **Resignation and draw handling** with intelligent result display
+- **Comprehensive draw condition detection** (three-fold repetition, 50-move rule, insufficient material)
+- **Checkmate and stalemate detection** with proper game ending
 - **Integrated UI-backend synchronization for all game management features**
 
 ✅ **Offline-First Design**
@@ -122,11 +127,13 @@ ChessProgram/
 │   │   ├── Modals/         # Dialogs and overlays
 │   │   └── UI/             # Reusable UI components
 │   ├── engine/             # Game logic and chess engine
-│   │   ├── GameEngine.ts   # Main game logic wrapper ✅
+│   │   ├── GameEngine.ts   # Main game logic wrapper with manual three-fold repetition ✅
 │   │   ├── GameStateManager.ts # Central state coordination ✅
 │   │   ├── MoveHistoryManager.ts # Enhanced move tracking ✅
 │   │   ├── EndgameDetector.ts # Comprehensive endgame detection ✅
 │   │   └── NotationGenerator.ts # Complete notation system ✅
+│   ├── orchestrator/       # Central coordination layer
+│   │   └── ChessGameOrchestrator.ts # Enhanced with draw reason API ✅
 │   ├── ai/                 # AI engine integration (Phase 3)
 │   │   ├── StockfishEngine.ts # Stockfish wrapper and UCI communication
 │   │   ├── AIPlayer.ts     # AI player abstraction layer
@@ -177,10 +184,11 @@ ChessProgram/
 The application includes 30 comprehensive test scenarios covering:
 
 - **Core Chess Logic** (Tests 1-8): Basic moves, special moves, illegal move handling
-- **Game Endings** (Tests 9-12): Checkmate, stalemate, draws, resignation  
+- **Game Endings** (Tests 9-12): Checkmate, stalemate, comprehensive draw detection (three-fold repetition, 50-move rule), resignation  
 - **UI Interactions** (Tests 14-18): Animations, zoom, responsive design
 - **System Requirements** (Tests 19-20): Offline functionality, performance
 - **AI Integration** (Tests 26-30): Stockfish engine, AI vs human gameplay, thinking visualization
+- **Analysis Interface** (Tests 31-33): Evaluation bar game ending display, smart text overlays, position analysis
 
 ### Running Tests
 

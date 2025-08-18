@@ -97,6 +97,46 @@ Gets current game status.
 
 **Returns**: One of: `'playing'`, `'check'`, `'checkmate'`, `'stalemate'`, `'draw'`, `'resigned'`
 
+##### `getGameResult(): GameResult`
+
+Gets game result in standard notation.
+
+**Returns**: Game result as `'1-0'` (white wins), `'0-1'` (black wins), `'1/2-1/2'` (draw), or `'*'` (ongoing)
+
+**Example**:
+```typescript
+const result = engine.getGameResult();
+console.log(result); // "1-0", "0-1", "1/2-1/2", or "*"
+```
+
+##### `getDrawReason(): string | null`
+
+Gets specific reason for draw if game is drawn.
+
+**Returns**: One of: `'threefold_repetition'`, `'fifty_move_rule'`, `'insufficient_material'`, or `null` if not drawn
+
+**Example**:
+```typescript
+if (engine.getGameStatus() === 'draw') {
+  const reason = engine.getDrawReason();
+  console.log(`Game drawn by: ${reason}`);
+}
+```
+
+##### `isThreefoldRepetition(): boolean`
+
+Checks if current position has occurred three times (manual implementation).
+
+**Returns**: Boolean indicating three-fold repetition
+
+**Note**: Uses manual position tracking with FEN normalization for reliable detection.
+
+##### `isInsufficientMaterial(): boolean`
+
+Checks if neither side has sufficient material to achieve checkmate.
+
+**Returns**: Boolean indicating insufficient material
+
 ##### `getFEN(): string`
 
 Gets current position in FEN notation.
@@ -505,6 +545,8 @@ Interactive post-game analysis interface with Stockfish integration.
 interface GameAnalysisProps {
   pgn: string;              // Game in PGN format
   gameResult?: string;      // Game result from main interface
+  gameStatus?: string;      // Game status for specific ending reasons
+  drawReason?: string;      // Draw reason for specific draw types
   onClose: () => void;      // Close handler
 }
 ```
@@ -513,9 +555,37 @@ interface GameAnalysisProps {
 
 - **Real-time evaluation**: Progressive analysis from depth 1-20
 - **Interactive navigation**: Click moves or use arrow keys
-- **Visual evaluation bar**: Graphical position assessment
+- **Visual evaluation bar**: Graphical position assessment with intelligent game ending display
+- **Smart text overlay**: Shows specific ending reasons in evaluation bar middle text
+  - **Resignations**: "WHITE RESIGNS" / "BLACK RESIGNS"
+  - **Draw types**: "3-FOLD REPETITION", "50-MOVE RULE", "INSUFFICIENT MATERIAL"
+  - **Traditional endings**: "CHECKMATE", "STALEMATE"
+- **Context-aware display**: Shows actual game ending at final position, analysis results during navigation
 - **Game result display**: Shows resignation, checkmate, stalemate results
 - **Keyboard shortcuts**: ←/→ and ↑/↓ for move navigation
+
+#### Enhanced Functions
+
+##### `getGameEndingText(): string | null`
+
+Determines appropriate ending text based on game status, result, and draw reason.
+
+**Returns**: Specific ending text for evaluation bar display or `null` if no special ending
+
+**Logic**:
+- Checks for resignation vs. natural game endings
+- Maps draw reasons to specific text displays
+- Provides fallback for unknown ending types
+
+**Example**:
+```typescript
+// In GameAnalysis component
+const endingText = getGameEndingText();
+if (endingText) {
+  // Display in evaluation bar overlay
+  return <div className="game-over-text-overlay">{endingText}</div>;
+}
+```
 
 #### Constants
 

@@ -1,5 +1,49 @@
 # Chess Program Changelog
 
+## [August 2025] - Draw Logic & Analysis Interface Enhancements
+
+### New Features: Three-Fold Repetition & Evaluation Bar Game Endings ✅
+
+#### 1. Manual Three-Fold Repetition Detection:
+- **Replaced Chess.js implementation** with reliable manual position tracking
+- **Position normalization** using FEN components (board, turn, castling rights)
+- **Accurate occurrence counting** with proper position history management
+- **Bug fixes**: Eliminated double position insertion and missing starting positions
+- **Integration**: Seamless coordination with existing draw detection systems
+
+#### 2. Intelligent Evaluation Bar Game Endings:
+- **Smart text overlay** in analysis interface evaluation bar
+- **Resignation displays**: "WHITE RESIGNS" / "BLACK RESIGNS" based on game result
+- **Draw type displays**: "3-FOLD REPETITION", "50-MOVE RULE", "INSUFFICIENT MATERIAL"
+- **Context-aware logic**: Shows actual game ending at final position, analysis results during navigation
+- **Enhanced API**: New `ChessGameOrchestrator.getDrawReason()` method
+
+#### 3. Technical Implementation:
+- **GameEngine enhancements**: Manual three-fold repetition with position history tracking
+- **GameAnalysis improvements**: Enhanced with game ending text generation
+- **GameContainer integration**: Passes comprehensive ending information to analysis
+- **Performance optimizations**: Lazy evaluation and caching for draw reasons
+
+#### 4. Enhanced User Experience:
+- **Clear communication**: Specific ending reasons displayed in evaluation bar
+- **Visual consistency**: Text styling matches existing checkmate/stalemate displays
+- **Historical context**: Maintains position analysis during game review
+- **Error handling**: Graceful fallbacks for missing ending information
+
+#### Bug Fixes:
+- Fixed `validateMove()` method causing double position insertion in history
+- Ensured starting position properly included in position tracking
+- Resolved Chess.js three-fold repetition reliability issues
+- Enhanced error recovery for invalid or missing draw reason data
+
+#### Documentation Updates:
+- **CLAUDE.md**: Added comprehensive "Evaluation Bar Game Ending Display" section
+- **Technical guides**: Complete implementation details and integration points
+- **Code examples**: TypeScript implementation examples for getGameEndingText()
+- **Performance notes**: Optimization strategies and caching approaches
+
+---
+
 ## [August 2025] - Phase 2 Complete + Phase 3 Partial
 
 ### Phase 3.2 & 3.3: Special Moves & Visual Feedback - PARTIALLY COMPLETED ✅
@@ -202,6 +246,8 @@ npm start
 
 ## Version History
 
+- **v0.3.5** - Draw Logic & Analysis Interface Enhancements (August 2025)
+- **v0.3.0** - Phase 3 Analysis Interface Complete (August 2025)
 - **v0.2.1** - Phase 2.1 Complete (December 2024)
 - **v0.1.4** - Phase 1.4 Complete with GameState standardization (December 2024)
 - **v0.1.0** - Initial Phase 1 implementation (2024)

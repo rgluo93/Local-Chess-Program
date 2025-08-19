@@ -2,17 +2,20 @@
  * EvaluationBar Component Styles - Embedded in main game interface
  */
 
-.evaluation-bar-container {
+.post-game-evaluation-bar-container {
   background: white;
   border: 1px solid #ddd;
   border-radius: 8px;
   padding: 1rem;
   text-align: center;
   width: 120px;
-  margin-right: 1rem;
+  position: absolute;
+  left: -140px;
+  top: 0;
+  z-index: 1;
 }
 
-.evaluation-bar-container h4 {
+.post-game-evaluation-bar-container h4 {
   margin: 0 0 1rem 0;
   color: #333;
   font-size: 0.9rem;

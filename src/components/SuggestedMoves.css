@@ -1,0 +1,78 @@
+/**
+ * SuggestedMoves Component Styles - Matching MoveHistoryPanel styling
+ */
+
+.suggested-moves-container {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+  width: 120px;
+}
+
+.suggested-moves-container h4 {
+  margin: 0 0 0.75rem 0;
+  color: #333;
+  font-size: 0.9rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary-brown);
+}
+
+.moves-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.no-suggestions {
+  color: #999;
+  font-style: italic;
+  text-align: center;
+  padding: 10px;
+  font-size: 0.85rem;
+}
+
+.suggested-move-pair {
+  display: flex;
+  align-items: center;
+  padding: 3px 6px;
+  border-radius: 3px;
+  transition: background-color 0.2s;
+}
+
+.suggested-move-pair:hover {
+  background-color: rgba(62, 39, 35, 0.05);
+}
+
+.move-number {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary-brown);
+  margin-right: 8px;
+  min-width: 35px;
+  font-size: 0.85rem;
+}
+
+.suggested-move {
+  font-family: 'Courier New', monospace;
+  margin-right: auto;
+  min-width: 50px;
+  font-size: 0.85rem;
+}
+
+.suggested-move.white-move {
+  color: var(--color-primary-brown);
+}
+
+.suggested-move.black-move {
+  color: var(--color-primary-brown);
+}
+
+.move-evaluation {
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  color: #666;
+  font-weight: bold;
+  min-width: 40px;
+  text-align: right;
+}

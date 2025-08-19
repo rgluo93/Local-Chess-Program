@@ -147,7 +147,7 @@ const EvaluationBar: React.FC<EvaluationBarProps> = ({
   const gameEndingText = getGameEndingText();
 
   return (
-    <div className="evaluation-bar-container">
+    <div className="post-game-evaluation-bar-container">
       <h4>Position Evaluation</h4>
       <div className="evaluation-bar">
         <div className="eval-bar-bg">

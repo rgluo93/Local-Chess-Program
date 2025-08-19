@@ -69,6 +69,24 @@
   font-family: 'Courier New', monospace;
 }
 
+.starting-position {
+  color: var(--color-primary-brown);
+  font-style: italic;
+  cursor: pointer;
+}
+
+.white-move.current, .black-move.current {
+  background-color: #81D4FA;
+  color: white;
+  font-weight: bold;
+  border-radius: 3px;
+  padding: 2px 4px;
+}
+
+.move-pair.current {
+  background-color: rgba(129, 212, 250, 0.2);
+}
+
 /* Scrollbar styling */
 .moves-list::-webkit-scrollbar {
   width: 8px;

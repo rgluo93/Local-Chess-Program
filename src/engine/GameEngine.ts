@@ -246,19 +246,38 @@ export class GameEngine {
    * Get specific draw reason if game is drawn
    */
   getDrawReason(): string | null {
-    if (!this.chess.isDraw() && !this.isThreefoldRepetitionManual()) {
-      return null;
-    }
-    
+    // Check manual three-fold repetition first
     if (this.isThreefoldRepetitionManual()) {
       return 'threefold_repetition';
     }
+    
+    // Only check other draws if game is actually drawn
+    if (!this.chess.isDraw()) {
+      return null;
+    }
+    
+    // Check insufficient material
     if (this.chess.isInsufficientMaterial()) {
       return 'insufficient_material';
     }
-    // Note: Chess.js doesn't have isDrawByFiftyMoves() exposed directly
-    // but we can infer it if isDraw() is true but not the other conditions
-    return 'fifty_move_rule';
+    
+    // Check fifty-move rule by examining the halfmove clock in FEN
+    const fen = this.chess.fen();
+    const fenParts = fen.split(' ');
+    const halfmoveClock = parseInt(fenParts[4] || '0');
+    
+    if (halfmoveClock >= 100) { // 100 half-moves = 50 full moves
+      return 'fifty_move_rule';
+    }
+    
+    // If it's a draw but none of the above, it might be stalemate
+    // But stalemate should be handled separately, not as a draw reason
+    if (this.chess.isStalemate()) {
+      return null; // Stalemate is not a draw reason, it's a game ending
+    }
+    
+    // Unknown draw type
+    return null;
   }
 
   /**

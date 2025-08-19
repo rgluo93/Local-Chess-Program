@@ -9,15 +9,33 @@ import './MoveHistoryPanel.css';
 
 interface MoveHistoryPanelProps {
   gameState: GameState | null;
+  isPostGameAnalysis?: boolean;
+  currentMoveIndex?: number;
+  onMoveClick?: (moveIndex: number) => void;
 }
 
-const MoveHistoryPanel: React.FC<MoveHistoryPanelProps> = ({ gameState }) => {
+const MoveHistoryPanel: React.FC<MoveHistoryPanelProps> = ({ 
+  gameState, 
+  isPostGameAnalysis = false, 
+  currentMoveIndex = 0, 
+  onMoveClick 
+}) => {
   const moves = gameState?.moves || [];
   
   return (
     <div className="move-history-panel" data-testid="move-history-panel">
       <h3 className="panel-title">Move History</h3>
       <div className="moves-list">
+        {isPostGameAnalysis && onMoveClick && (
+          <div 
+            className={`move-pair ${currentMoveIndex === 0 ? 'current' : ''}`}
+            onClick={() => onMoveClick(0)}
+            style={{ cursor: 'pointer' }}
+          >
+            <span className="move-number">—</span>
+            <span className="starting-position">Starting position</span>
+          </div>
+        )}
         {moves.length === 0 ? (
           <div className="no-moves">No moves yet</div>
         ) : (
@@ -31,8 +49,22 @@ const MoveHistoryPanel: React.FC<MoveHistoryPanelProps> = ({ gameState }) => {
               pairedMoves.push(
                 <div key={moveNumber} className="move-pair">
                   <span className="move-number">{moveNumber}.</span>
-                  <span className="white-move">{whiteMove.notation}</span>
-                  {blackMove && <span className="black-move">{blackMove.notation}</span>}
+                  <span 
+                    className={`white-move ${isPostGameAnalysis && currentMoveIndex === i + 1 ? 'current' : ''}`}
+                    onClick={isPostGameAnalysis && onMoveClick ? () => onMoveClick(i + 1) : undefined}
+                    style={isPostGameAnalysis ? { cursor: 'pointer' } : {}}
+                  >
+                    {whiteMove.notation}
+                  </span>
+                  {blackMove && (
+                    <span 
+                      className={`black-move ${isPostGameAnalysis && currentMoveIndex === i + 2 ? 'current' : ''}`}
+                      onClick={isPostGameAnalysis && onMoveClick ? () => onMoveClick(i + 2) : undefined}
+                      style={isPostGameAnalysis ? { cursor: 'pointer' } : {}}
+                    >
+                      {blackMove.notation}
+                    </span>
+                  )}
                 </div>
               );
             }

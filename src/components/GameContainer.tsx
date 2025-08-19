@@ -4,17 +4,17 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Chess } from 'chess.js';
 import { CanvasChessBoard } from './CanvasChessBoard';
 import GameControls from './GameControls';
 import MoveHistoryPanel from './MoveHistoryPanel';
 import GameAnalysis from './GameAnalysis';
+import EvaluationBar from './EvaluationBar';
 import { GameModeModal } from './GameModeModal';
-import { GameStateManager } from '../engine/GameStateManager';
-import { GameEngine } from '../engine/GameEngine';
 import { ChessGameOrchestrator } from '../orchestrator/ChessGameOrchestrator';
-import type { Square, GameState, PieceType } from '../types/Chess';
+import { StockfishEngine } from '../ai/StockfishEngine';
+import type { Square, GameState, PieceType, PieceColor, Move } from '../types/Chess';
 import { GameMode } from '../ai/types/AITypes';
-import type { ThinkingMove } from '../ai/types/AITypes';
 import './GameContainer.css';
 
 const GameContainer: React.FC = () => {
@@ -32,11 +32,58 @@ const GameContainer: React.FC = () => {
   const [gameMode, setGameMode] = useState<GameMode | null>(null); // Start with no mode selected
   const [aiEngineStatus, setAIEngineStatus] = useState<'ready' | 'thinking' | 'error' | 'offline'>('offline');
   const [isAIThinking, setIsAIThinking] = useState(false);
-  const [aiThinkingMoves, setAIThinkingMoves] = useState<ThinkingMove[]>([]);
 
   // Modal state
   const [showGameModeModal, setShowGameModeModal] = useState(true); // Show on first load
   const [showAnalysis, setShowAnalysis] = useState(false);
+
+  // Post-game analysis state
+  const [showPostGameAnalysis, setShowPostGameAnalysis] = useState(false);
+  const [analysisCurrentMoveIndex, setAnalysisCurrentMoveIndex] = useState(0);
+  const [analysisGameState, setAnalysisGameState] = useState<GameState | null>(null);
+  const [analysisMoves, setAnalysisMoves] = useState<Move[]>([]);
+  const [analysisMoveFens, setAnalysisMoveFens] = useState<string[]>([]);
+  const [chessForAnalysis] = useState(() => new Chess());
+  
+  // Evaluation state
+  const [evaluation, setEvaluation] = useState<number | null>(null);
+  const [currentDepth, setCurrentDepth] = useState<number>(0);
+  const [mateInMoves, setMateInMoves] = useState<number | null>(null);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const engineRef = useRef<StockfishEngine | null>(null);
+  const [engineReady, setEngineReady] = useState<boolean>(false);
+
+  // Initialize Stockfish engine for post-game analysis
+  useEffect(() => {
+    const initEngine = async () => {
+      try {
+        const engine = new StockfishEngine();
+        await engine.initialize();
+        
+        // Set up real-time evaluation callback
+        engine.setEvaluationCallback((evaluation: number, depth: number, mateIn?: number) => {
+          setEvaluation(evaluation);
+          setCurrentDepth(depth);
+          setMateInMoves(mateIn || null);
+        });
+        
+        engineRef.current = engine;
+        setEngineReady(true);
+      } catch (error) {
+        console.error('Failed to initialize Stockfish engine:', error);
+      }
+    };
+
+    initEngine();
+
+    // Cleanup on unmount
+    return () => {
+      if (engineRef.current) {
+        engineRef.current.terminate();
+        engineRef.current = null;
+      }
+    };
+  }, []);
 
   // Initialize orchestrator ONLY after game mode is selected
   const initializeOrchestrator = useCallback(async (selectedMode: GameMode) => {
@@ -67,13 +114,186 @@ const GameContainer: React.FC = () => {
     }
   }, []);
 
+  // Enable post-game analysis
+  const enablePostGameAnalysis = useCallback((gameState: GameState) => {
+    try {
+      if (!gameState.pgn) return;
+      
+      chessForAnalysis.reset();
+      chessForAnalysis.loadPgn(gameState.pgn);
+      
+      const history = chessForAnalysis.history({ verbose: true });
+      const gameHistory = history.map((move: any): Move => ({
+        from: move.from,
+        to: move.to,
+        piece: move.piece === 'p' ? 'pawn' :
+               move.piece === 'r' ? 'rook' :
+               move.piece === 'n' ? 'knight' :
+               move.piece === 'b' ? 'bishop' :
+               move.piece === 'q' ? 'queen' :
+               move.piece === 'k' ? 'king' : 'pawn',
+        color: move.color === 'w' ? 'white' : 'black',
+        captured: move.captured ? (
+          move.captured === 'p' ? 'pawn' :
+          move.captured === 'r' ? 'rook' :
+          move.captured === 'n' ? 'knight' :
+          move.captured === 'b' ? 'bishop' :
+          move.captured === 'q' ? 'queen' :
+          move.captured === 'k' ? 'king' : 'pawn'
+        ) : undefined,
+        promotion: move.promotion ? (
+          move.promotion === 'q' ? 'queen' :
+          move.promotion === 'r' ? 'rook' :
+          move.promotion === 'b' ? 'bishop' :
+          move.promotion === 'n' ? 'knight' : 'queen'
+        ) : undefined,
+        notation: move.san,
+        timestamp: Date.now(),
+        fen: chessForAnalysis.fen()
+      }));
+      
+      // Calculate FEN for each position
+      chessForAnalysis.reset();
+      const fens: string[] = [];
+      
+      // Starting position FEN
+      fens.push(chessForAnalysis.fen());
+      
+      // FEN after each move
+      for (const move of history) {
+        chessForAnalysis.move(move.san);
+        fens.push(chessForAnalysis.fen());
+      }
+      
+      setAnalysisMoves(gameHistory);
+      setAnalysisMoveFens(fens);
+      
+      // Go to final position
+      setAnalysisCurrentMoveIndex(gameHistory.length);
+      updateAnalysisGameState(gameHistory.length, gameHistory);
+      
+      setShowPostGameAnalysis(true);
+      
+      // Evaluate final position
+      if (engineReady && engineRef.current && fens.length > 0) {
+        evaluatePosition(fens[fens.length - 1]);
+      }
+    } catch (error) {
+      console.error('Error enabling post-game analysis:', error);
+    }
+  }, [engineReady]);
+
+  // Evaluate specific position with Stockfish
+  const evaluatePosition = async (fen: string) => {
+    if (!engineRef.current || !fen) return;
+
+    try {
+      setIsEvaluating(true);
+      
+      // Reset evaluation state
+      setEvaluation(null);
+      setCurrentDepth(0);
+      setMateInMoves(null);
+      
+      await engineRef.current.setPosition(fen);
+      await engineRef.current.evaluatePosition(20);
+      
+    } catch (error) {
+      console.error('Error evaluating position:', error);
+      setEvaluation(null);
+      setCurrentDepth(0);
+      setMateInMoves(null);
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
+
+  // Update analysis game state based on move index
+  const updateAnalysisGameState = (moveIndex: number, moves: Move[]) => {
+    chessForAnalysis.reset();
+    for (let i = 0; i < moveIndex; i++) {
+      chessForAnalysis.move(moves[i].notation);
+    }
+    
+    const board = chessForAnalysis.board();
+    const squares = board.map(row => 
+      row.map(piece => piece ? {
+        type: (piece.type === 'p' ? 'pawn' :
+              piece.type === 'r' ? 'rook' :
+              piece.type === 'n' ? 'knight' :
+              piece.type === 'b' ? 'bishop' :
+              piece.type === 'q' ? 'queen' :
+              piece.type === 'k' ? 'king' : 'pawn') as PieceType,
+        color: (piece.color === 'w' ? 'white' : 'black') as PieceColor,
+        hasMoved: false
+      } : null)
+    );
+
+    const newGameState: GameState = {
+      board: { squares },
+      currentPlayer: chessForAnalysis.turn() === 'w' ? 'white' : 'black',
+      status: chessForAnalysis.isCheckmate() ? 'checkmate' : 
+              chessForAnalysis.isStalemate() ? 'stalemate' : 
+              chessForAnalysis.isDraw() ? 'draw' :
+              chessForAnalysis.inCheck() ? 'check' : 'playing',
+      moves: moves.slice(0, moveIndex),
+      fen: chessForAnalysis.fen(),
+      pgn: chessForAnalysis.pgn(),
+      result: chessForAnalysis.isGameOver() ? 
+              (chessForAnalysis.isCheckmate() ? 
+                (chessForAnalysis.turn() === 'w' ? 'black_wins' : 'white_wins') : 'draw') : 'ongoing',
+      moveHistory: moves.slice(0, moveIndex).map(move => move.notation)
+    };
+
+    setAnalysisGameState(newGameState);
+  };
+
+  // Navigate to specific move in analysis
+  const goToAnalysisMove = (moveIndex: number) => {
+    if (moveIndex < 0 || moveIndex > analysisMoves.length) return;
+    
+    setAnalysisCurrentMoveIndex(moveIndex);
+    updateAnalysisGameState(moveIndex, analysisMoves);
+    
+    // Evaluate the new position
+    if (analysisMoveFens[moveIndex] && engineReady && engineRef.current) {
+      evaluatePosition(analysisMoveFens[moveIndex]);
+    }
+  };
+
+  // Handle keyboard navigation for post-game analysis
+  useEffect(() => {
+    if (!showPostGameAnalysis) return;
+    
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        goToAnalysisMove(analysisCurrentMoveIndex - 1);
+      } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        goToAnalysisMove(analysisCurrentMoveIndex + 1);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showPostGameAnalysis, analysisCurrentMoveIndex, analysisMoves.length]);
+
   // Update game state when it changes
   const updateGameState = useCallback(() => {
     if (orchestratorReady && orchestrator) {
       const gameStateResponse = orchestrator.getGameState();
       setGameState(gameStateResponse.gameState);
+      
+      // Check if game just ended and enable post-game analysis
+      const newGameState = gameStateResponse.gameState;
+      const isGameOver = newGameState && ['checkmate', 'stalemate', 'draw', 'resigned'].includes(newGameState.status);
+      
+      if (isGameOver && !showPostGameAnalysis) {
+        enablePostGameAnalysis(newGameState);
+      }
     }
-  }, [orchestrator, orchestratorReady]);
+  }, [orchestrator, orchestratorReady, showPostGameAnalysis, enablePostGameAnalysis]);
 
   // Handle game mode changes
   const handleGameModeChange = useCallback(async (newMode: GameMode) => {
@@ -106,12 +326,22 @@ const GameContainer: React.FC = () => {
     setGameState(null);
     setAIEngineStatus('offline');
     setIsAIThinking(false);
-    setAIThinkingMoves([]);
     
     // Clear UI state
     setSelectedSquare(null);
     setValidMoves([]);
     setAiMoveDestination(null);
+    
+    // Clear post-game analysis state
+    setShowPostGameAnalysis(false);
+    setAnalysisCurrentMoveIndex(0);
+    setAnalysisGameState(null);
+    setAnalysisMoves([]);
+    setAnalysisMoveFens([]);
+    setEvaluation(null);
+    setCurrentDepth(0);
+    setMateInMoves(null);
+    setIsEvaluating(false);
     
     // Show modal to select new game mode
     setShowGameModeModal(true);
@@ -149,24 +379,6 @@ const GameContainer: React.FC = () => {
     setShowAnalysis(true);
   }, []);
 
-  // Handle AI state updates
-  useEffect(() => {
-    const pollAIState = () => {
-      if (gameMode === GameMode.HUMAN_VS_AI && orchestratorReady) {
-        // Get thinking moves from orchestrator
-        try {
-          const thinkingMoves = orchestrator.getAIThinkingMoves();
-          setAIThinkingMoves(thinkingMoves);
-          setIsAIThinking(thinkingMoves.length > 0);
-        } catch (error) {
-          // Orchestrator might not have AI methods yet, that's ok
-        }
-      }
-    };
-
-    const interval = setInterval(pollAIState, 100);
-    return () => clearInterval(interval);
-  }, [gameMode, orchestrator, orchestratorReady]);
 
   // Trigger AI move after human move in AI mode
   useEffect(() => {
@@ -182,7 +394,7 @@ const GameContainer: React.FC = () => {
           const preAIMoveState = orchestrator?.getGameState();
           const moveCountBefore = preAIMoveState?.gameState?.moves?.length || 0;
           
-          await orchestrator.triggerAIMove();
+          await orchestrator?.triggerAIMove();
           setIsAIThinking(false);
           setAIEngineStatus('ready');
           
@@ -209,7 +421,7 @@ const GameContainer: React.FC = () => {
     };
 
     triggerAIMove();
-  }, [gameState?.moveHistory?.length, gameMode, orchestrator, gameState]);
+  }, [gameState?.moves?.length, gameMode, orchestrator, gameState]);
 
   // Helper function to check if there's a piece at a square
   const hasPieceAt = (square: Square): boolean => {
@@ -355,14 +567,27 @@ const GameContainer: React.FC = () => {
     <div className="game-container" data-testid="game-container">
       <div className="game-main">
         <div className="board-container" style={{ position: 'relative' }}>
+          {showPostGameAnalysis && (
+            <EvaluationBar
+              evaluation={evaluation}
+              mateInMoves={mateInMoves}
+              currentDepth={currentDepth}
+              isEvaluating={isEvaluating}
+              gameState={analysisGameState}
+              gameResult={gameState?.result}
+              gameStatus={gameState?.status}
+              drawReason={orchestratorReady && orchestrator ? orchestrator.getDrawReason() || undefined : undefined}
+              isAtFinalPosition={analysisCurrentMoveIndex === analysisMoves.length}
+            />
+          )}
           <CanvasChessBoard 
-            gameState={gameState}
-            boardState={gameState?.board}
-            onSquareClick={handleSquareClick}
-            selectedSquare={selectedSquare}
-            validMoves={validMoves}
-            checkSquare={getCheckSquare()}
-            aiMoveSquare={aiMoveDestination}
+            gameState={showPostGameAnalysis ? analysisGameState : gameState}
+            boardState={showPostGameAnalysis ? analysisGameState?.board : gameState?.board}
+            onSquareClick={showPostGameAnalysis ? () => {} : handleSquareClick}
+            selectedSquare={showPostGameAnalysis ? null : selectedSquare}
+            validMoves={showPostGameAnalysis ? [] : validMoves}
+            checkSquare={showPostGameAnalysis ? null : getCheckSquare()}
+            aiMoveSquare={showPostGameAnalysis ? null : aiMoveDestination}
             showStartingPosition={false} // Use actual game state instead
           />
         </div>
@@ -378,6 +603,9 @@ const GameContainer: React.FC = () => {
       </div>
       <MoveHistoryPanel 
         gameState={gameState}
+        isPostGameAnalysis={showPostGameAnalysis}
+        currentMoveIndex={analysisCurrentMoveIndex}
+        onMoveClick={showPostGameAnalysis ? goToAnalysisMove : undefined}
       />
       
       <GameModeModal

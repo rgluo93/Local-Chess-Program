@@ -92,6 +92,17 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({
             <span className="ai-status-text">{getAIStatusText()}</span>
           </div>
         </button>
+
+        <button
+          className={`game-mode-option ${currentMode === GameMode.SANDBOX ? 'active' : ''}`}
+          onClick={() => handleModeChange(GameMode.SANDBOX)}
+          disabled={disabled || isChanging}
+          aria-label="Sandbox mode"
+        >
+          <div className="mode-icon">🔬</div>
+          <div className="mode-title">Sandbox</div>
+          <div className="mode-description">Analyze positions with full engine support</div>
+        </button>
       </div>
 
       {isChanging && (

@@ -46,7 +46,7 @@ const GameContainer: React.FC = () => {
   const [analysisMoveFens, setAnalysisMoveFens] = useState<string[]>([]);
   const [chessForAnalysis] = useState(() => new Chess());
   
-  // Evaluation state
+  // Evaluation state (for post-game analysis)
   const [evaluation, setEvaluation] = useState<number | null>(null);
   const [currentDepth, setCurrentDepth] = useState<number>(0);
   const [mateInMoves, setMateInMoves] = useState<number | null>(null);
@@ -55,6 +55,23 @@ const GameContainer: React.FC = () => {
   const [principalVariation, setPrincipalVariation] = useState<string[]>([]);
   const engineRef = useRef<StockfishEngine | null>(null);
   const [engineReady, setEngineReady] = useState<boolean>(false);
+
+  // Sandbox analysis state
+  const [sandboxEvaluation, setSandboxEvaluation] = useState<number | null>(null);
+  const [sandboxCurrentDepth, setSandboxCurrentDepth] = useState<number>(0);
+  const [sandboxMateInMoves, setSandboxMateInMoves] = useState<number | null>(null);
+  const [sandboxIsEvaluating, setSandboxIsEvaluating] = useState<boolean>(false);
+  const [sandboxBestMove, setSandboxBestMove] = useState<string | null>(null);
+  const [sandboxPrincipalVariation, setSandboxPrincipalVariation] = useState<string[]>([]);
+  const sandboxEngineRef = useRef<StockfishEngine | null>(null);
+  const [sandboxEngineReady, setSandboxEngineReady] = useState<boolean>(false);
+
+  // Sandbox navigation state
+  const [sandboxCurrentMoveIndex, setSandboxCurrentMoveIndex] = useState<number>(0);
+  const [sandboxIsNavigating, setSandboxIsNavigating] = useState<boolean>(false);
+  const [sandboxNavigationFens, setSandboxNavigationFens] = useState<string[]>([]);
+  const [sandboxNavigationGameState, setSandboxNavigationGameState] = useState<GameState | null>(null);
+  const [sandboxChess] = useState(() => new Chess());
 
   // Initialize Stockfish engine for post-game analysis
   useEffect(() => {
@@ -89,6 +106,204 @@ const GameContainer: React.FC = () => {
       }
     };
   }, []);
+
+  // Initialize Stockfish engine for sandbox mode analysis
+  useEffect(() => {
+    if (gameMode === GameMode.SANDBOX) {
+      const initSandboxEngine = async () => {
+        try {
+          const engine = new StockfishEngine();
+          await engine.initialize();
+          
+          // Set up real-time evaluation callback for sandbox
+          engine.setEvaluationCallback((evaluation: number, depth: number, mateIn?: number, bestMoveUci?: string, pv?: string[]) => {
+            setSandboxEvaluation(evaluation);
+            setSandboxCurrentDepth(depth);
+            setSandboxMateInMoves(mateIn || null);
+            setSandboxBestMove(bestMoveUci || null);
+            setSandboxPrincipalVariation(pv || []);
+          });
+          
+          sandboxEngineRef.current = engine;
+          setSandboxEngineReady(true);
+        } catch (error) {
+          console.error('Failed to initialize sandbox Stockfish engine:', error);
+        }
+      };
+
+      initSandboxEngine();
+    }
+
+    // Cleanup sandbox engine when leaving sandbox mode or unmounting
+    return () => {
+      if (sandboxEngineRef.current) {
+        sandboxEngineRef.current.terminate();
+        sandboxEngineRef.current = null;
+        setSandboxEngineReady(false);
+      }
+    };
+  }, [gameMode]);
+
+  // Sandbox navigation functions (copied from GameAnalysis pattern)
+  const updateSandboxGameState = (moveIndex: number) => {
+    try {
+      sandboxChess.reset();
+      
+      // Play moves up to the target index
+      if (gameState?.moves) {
+        for (let i = 0; i < moveIndex; i++) {
+          if (i < gameState.moves.length) {
+            sandboxChess.move(gameState.moves[i].notation);
+          }
+        }
+      }
+      
+      // Convert chess.js board state to our GameState format
+      const board = sandboxChess.board();
+      const squares = board.map(row => 
+        row.map(piece => piece ? {
+          type: piece.type === 'p' ? 'pawn' :
+                piece.type === 'r' ? 'rook' :
+                piece.type === 'n' ? 'knight' :
+                piece.type === 'b' ? 'bishop' :
+                piece.type === 'q' ? 'queen' :
+                piece.type === 'k' ? 'king' : 'pawn',
+          color: piece.color === 'w' ? 'white' : 'black',
+          hasMoved: false
+        } : null)
+      );
+
+      const newGameState: GameState = {
+        board: { squares },
+        currentPlayer: sandboxChess.turn() === 'w' ? 'white' : 'black',
+        status: sandboxChess.isCheckmate() ? 'checkmate' : 
+                sandboxChess.isStalemate() ? 'stalemate' : 
+                sandboxChess.isDraw() ? 'draw' :
+                sandboxChess.inCheck() ? 'check' : 'playing',
+        moves: gameState?.moves?.slice(0, moveIndex) || [],
+        fen: sandboxChess.fen(),
+        pgn: sandboxChess.pgn(),
+        result: sandboxChess.isGameOver() ? 
+                (sandboxChess.isCheckmate() ? 
+                  (sandboxChess.turn() === 'w' ? 'black_wins' : 'white_wins') : 'draw') : 'ongoing',
+        moveHistory: gameState?.moves?.slice(0, moveIndex).map(move => move.notation) || []
+      };
+
+      setSandboxNavigationGameState(newGameState);
+    } catch (error) {
+      console.error('Error updating sandbox game state:', error);
+    }
+  };
+
+  const goToSandboxMove = (moveIndex: number) => {
+    if (!gameState?.moves) return;
+    
+    const maxIndex = gameState.moves.length;
+    const clampedIndex = Math.max(0, Math.min(maxIndex, moveIndex));
+    
+    setSandboxCurrentMoveIndex(clampedIndex);
+    setSandboxIsNavigating(clampedIndex !== maxIndex);
+    
+    updateSandboxGameState(clampedIndex);
+    
+    // Evaluate the position at this move index
+    if (sandboxNavigationFens[clampedIndex]) {
+      setTimeout(() => {
+        evaluateSandboxPosition(sandboxNavigationFens[clampedIndex]);
+      }, 50);
+    }
+  };
+
+  // Evaluate sandbox position using the same pattern as GameAnalysis
+  const evaluateSandboxPosition = async (fen: string) => {
+    if (!sandboxEngineRef.current || !fen) {
+      return;
+    }
+
+    try {
+      setSandboxIsEvaluating(true);
+      
+      // Reset evaluation state (following GameAnalysis pattern)
+      setSandboxEvaluation(null);
+      setSandboxCurrentDepth(0);
+      setSandboxMateInMoves(null);
+      setSandboxBestMove(null);
+      setSandboxPrincipalVariation([]);
+      
+      // Set position first, then evaluate (crucial step from GameAnalysis)
+      await sandboxEngineRef.current.setPosition(fen);
+      await sandboxEngineRef.current.evaluatePosition(20);
+      
+    } catch (error) {
+      console.error('Error evaluating sandbox position:', error);
+      setSandboxEvaluation(null);
+      setSandboxCurrentDepth(0);
+      setSandboxMateInMoves(null);
+      setSandboxBestMove(null);
+      setSandboxPrincipalVariation([]);
+    } finally {
+      setSandboxIsEvaluating(false);
+    }
+  };
+
+  // Trigger sandbox analysis when position changes
+  useEffect(() => {
+    if (gameMode === GameMode.SANDBOX && sandboxEngineReady) {
+      const currentFen = sandboxIsNavigating ? sandboxNavigationGameState?.fen : gameState?.fen;
+      if (currentFen) {
+        // Use setTimeout to ensure all state updates are processed (following GameAnalysis pattern)
+        setTimeout(() => {
+          evaluateSandboxPosition(currentFen);
+        }, 50);
+      }
+    }
+  }, [gameMode, sandboxEngineReady, gameState?.fen, sandboxIsNavigating, sandboxNavigationGameState?.fen]);
+
+  // Track moves and calculate FENs for sandbox navigation
+  useEffect(() => {
+    if (gameMode === GameMode.SANDBOX && gameState?.moves) {
+      try {
+        sandboxChess.reset();
+        const fens: string[] = [];
+        
+        // Starting position FEN
+        fens.push(sandboxChess.fen());
+        
+        // FEN after each move
+        for (const move of gameState.moves) {
+          sandboxChess.move(move.notation);
+          fens.push(sandboxChess.fen());
+        }
+        
+        setSandboxNavigationFens(fens);
+        
+        // If not actively navigating, stay at the latest move
+        if (!sandboxIsNavigating) {
+          setSandboxCurrentMoveIndex(gameState.moves.length);
+        }
+      } catch (error) {
+        console.error('Error calculating sandbox navigation FENs:', error);
+      }
+    }
+  }, [gameMode, gameState?.moves, sandboxIsNavigating]);
+
+  // Sandbox keyboard navigation (copied from GameAnalysis pattern)
+  useEffect(() => {
+    if (gameMode !== GameMode.SANDBOX) return;
+    
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        goToSandboxMove(sandboxCurrentMoveIndex - 1);
+      } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        goToSandboxMove(sandboxCurrentMoveIndex + 1);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [gameMode, sandboxCurrentMoveIndex, gameState?.moves?.length]);
 
   // Initialize orchestrator ONLY after game mode is selected
   const initializeOrchestrator = useCallback(async (selectedMode: GameMode) => {
@@ -294,11 +509,11 @@ const GameContainer: React.FC = () => {
       const gameStateResponse = orchestrator.getGameState();
       setGameState(gameStateResponse.gameState);
       
-      // Check if game just ended and enable post-game analysis
+      // Check if game just ended and enable post-game analysis (not in sandbox mode)
       const newGameState = gameStateResponse.gameState;
       const isGameOver = newGameState && ['checkmate', 'stalemate', 'draw', 'resigned'].includes(newGameState.status);
       
-      if (isGameOver && !showPostGameAnalysis) {
+      if (isGameOver && !showPostGameAnalysis && gameMode !== GameMode.SANDBOX) {
         enablePostGameAnalysis(newGameState);
       }
     }
@@ -365,12 +580,12 @@ const GameContainer: React.FC = () => {
     
     try {
       // In human vs AI mode, always resign the human player (white)
-      // In human vs human mode, resign the current player
+      // In human vs human and sandbox modes, resign the current player
       let resigningPlayer: 'white' | 'black';
       if (gameMode === GameMode.HUMAN_VS_AI) {
         resigningPlayer = 'white'; // Human always plays white
       } else {
-        // Human vs Human mode: resign whoever's turn it is
+        // Human vs Human and Sandbox modes: resign whoever's turn it is
         resigningPlayer = gameState?.currentPlayer === 'white' ? 'white' : 'black';
       }
       
@@ -481,10 +696,10 @@ const GameContainer: React.FC = () => {
       return;
     }
     
-    // Prevent moves if game is over or AI is thinking
+    // Prevent moves if game is over or AI is thinking (except in sandbox mode)
     const isGameOver = gameState && ['checkmate', 'stalemate', 'draw', 'resigned'].includes(gameState.status);
     
-    if (isGameOver || isAIThinking) {
+    if ((isGameOver && gameMode !== GameMode.SANDBOX) || isAIThinking) {
       console.log('Game is over or AI is thinking, moves not allowed');
       setSelectedSquare(null);
       setValidMoves([]);
@@ -572,6 +787,202 @@ const GameContainer: React.FC = () => {
     }
   };
 
+  // Handle square clicks during sandbox navigation (for branching)
+  const handleSandboxNavigationSquareClick = async (square: Square) => {
+    console.log('Sandbox navigation square click:', square, 'at move index:', sandboxCurrentMoveIndex);
+    
+    // Clear AI move highlight when user clicks any square
+    setAiMoveDestination(null);
+    
+    // Prevent moves if orchestrator is not ready
+    if (!orchestratorReady || !orchestrator || !sandboxNavigationGameState) {
+      console.log('Orchestrator not ready or no navigation state, moves not allowed');
+      return;
+    }
+
+    // For branching, we need to handle piece selection and moves based on the navigation state
+    if (selectedSquare === square) {
+      // Deselect if clicking same square
+      setSelectedSquare(null);
+      setValidMoves([]);
+    } else if (selectedSquare && validMoves.includes(square)) {
+      // A move is being made - this is where we create a branch
+      await createSandboxBranch(selectedSquare, square);
+    } else {
+      // Select new square and show valid moves for this navigation position
+      try {
+        // Use the sandbox chess instance to get valid moves from the current navigation position
+        sandboxChess.reset();
+        if (gameState?.moves) {
+          for (let i = 0; i < sandboxCurrentMoveIndex; i++) {
+            if (i < gameState.moves.length) {
+              sandboxChess.move(gameState.moves[i].notation);
+            }
+          }
+        }
+        
+        const moves = sandboxChess.moves({ square: square, verbose: true });
+        const validMoveSquares = moves.map((move: any) => move.to);
+        
+        setSelectedSquare(square);
+        setValidMoves(validMoveSquares);
+        console.log(`Selected square ${square} with ${validMoveSquares.length} valid moves`);
+      } catch (error) {
+        console.error('Error getting valid moves for navigation position:', error);
+        setSelectedSquare(null);
+        setValidMoves([]);
+      }
+    }
+  };
+
+  // Create a new branch from the current navigation position
+  const createSandboxBranch = async (from: Square, to: Square) => {
+    console.log(`Creating branch: ${from} → ${to} from move index ${sandboxCurrentMoveIndex}`);
+    
+    try {
+      // Check if this is a promotion move
+      const fromFile = from.charCodeAt(0) - 'a'.charCodeAt(0);
+      const fromRank = 8 - parseInt(from[1]);
+      const toRank = parseInt(to[1]);
+      
+      const piece = sandboxNavigationGameState?.board.squares[fromRank][fromFile];
+      const isPromotion = piece?.type === 'pawn' && 
+        ((piece.color === 'white' && toRank === 8) || (piece.color === 'black' && toRank === 1));
+
+      // First, truncate the game to the current navigation point
+      const truncatedMoves = gameState?.moves?.slice(0, sandboxCurrentMoveIndex) || [];
+      console.log('Truncating to', sandboxCurrentMoveIndex, 'moves:', truncatedMoves.map(m => m.notation));
+      console.log('Original game state has', gameState?.moves?.length, 'total moves');
+      console.log('Current game state FEN before truncation:', gameState?.fen);
+      
+      // Reset the orchestrator to the truncated state
+      await resetOrchestratorToBranchPoint(truncatedMoves);
+      
+      // Now make the new move
+      const moveRequest = { 
+        from, 
+        to, 
+        promotion: isPromotion ? ('queen' as PieceType) : undefined 
+      };
+      
+      console.log(`Making branch move:`, moveRequest);
+      const moveResult = await orchestrator.makeMove(moveRequest);
+      console.log(`Branch move result:`, moveResult);
+      
+      if (moveResult.success) {
+        // Clear selection
+        setSelectedSquare(null);
+        setValidMoves([]);
+        
+        console.log('Branch created successfully, exiting navigation mode');
+        
+        // Exit navigation mode FIRST - this is crucial
+        setSandboxIsNavigating(false);
+        
+        // Update the game state to reflect the new branch
+        updateGameState();
+        
+        console.log('Branch creation complete');
+      } else {
+        console.error('Branch move failed:', moveResult.error);
+      }
+    } catch (error) {
+      console.error('Error creating sandbox branch:', error);
+    }
+  };
+
+  // Reset orchestrator to a specific point in move history
+  const resetOrchestratorToBranchPoint = async (moves: Move[]) => {
+    console.log('Resetting orchestrator to branch point with', moves.length, 'moves');
+    
+    try {
+      // Always reset to starting position first, then replay exact moves needed
+      console.log('Resetting orchestrator to starting position');
+      await orchestrator.resetGame();
+      
+      const startingState = orchestrator.getGameState();
+      console.log(`After reset: orchestrator has ${startingState.gameState.moves.length} moves`);
+      console.log(`Starting FEN: ${startingState.gameState.fen}`);
+      
+      // Replay moves up to the branch point
+      for (let i = 0; i < moves.length; i++) {
+        const move = moves[i];
+        const moveRequest = { 
+          from: move.from, 
+          to: move.to, 
+          promotion: move.promotion 
+        };
+        console.log(`Replaying move ${i + 1}/${moves.length}: ${move.notation} (${moveRequest.from}→${moveRequest.to})`);
+        
+        const result = await orchestrator.makeMove(moveRequest);
+        if (!result.success) {
+          console.error(`Failed to replay move ${i + 1}:`, moveRequest, result.error);
+          
+          // Debug: Check orchestrator state after failed move
+          const stateAfterFailed = orchestrator.getGameState();
+          console.log(`After failed move: orchestrator has ${stateAfterFailed.gameState.moves.length} moves`);
+          console.log(`Current FEN: ${stateAfterFailed.gameState.fen}`);
+          
+          throw new Error(`Failed to replay move ${i + 1}: ${moveRequest.from}${moveRequest.to} - ${result.error}`);
+        }
+        
+        // Check FEN after each replayed move
+        const fenAfterMove = orchestrator.getCurrentPosition();
+        console.log(`FEN after replaying move ${i + 1}:`, fenAfterMove);
+      }
+      
+      // Verify final position
+      const finalState = orchestrator.getGameState();
+      const finalFEN = finalState.gameState.fen;
+      const expectedFEN = moves.length === 0 ? 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1' : sandboxNavigationFens[moves.length];
+      
+      console.log(`Final FEN: ${finalFEN}`);
+      console.log(`Expected FEN: ${expectedFEN}`);
+      console.log(`Final move count: ${finalState.gameState.moves.length}, expected: ${moves.length}`);
+      
+      if (finalFEN !== expectedFEN) {
+        console.error(`FEN mismatch! Expected: ${expectedFEN}, Got: ${finalFEN}`);
+        throw new Error(`Failed to reach target position. Expected: ${expectedFEN}, Got: ${finalFEN}`);
+      }
+      
+      console.log('✅ Orchestrator reset to branch point successfully');
+    } catch (error) {
+      console.error('Error resetting orchestrator to branch point:', error);
+      throw error;
+    }
+  };
+
+  // Sandbox evaluation formatting functions (copied from GameAnalysis)
+  const formatSandboxEvaluation = (evaluation: number | null, mateIn: number | null = null): string => {
+    if (evaluation === null) return "...";
+    
+    // Check for mate scores
+    if (mateIn !== null) {
+      return `M${mateIn}`;
+    } else if (Math.abs(evaluation) >= 999999) {
+      return 'M#';
+    } else {
+      // Regular centipawn evaluation
+      const pawns = (evaluation / 100).toFixed(2);
+      return evaluation >= 0 ? `+${pawns}` : pawns.toString();
+    }
+  };
+
+  // Calculate evaluation bar percentage for sandbox (copied from GameAnalysis)
+  const getSandboxEvaluationPercentage = (): number => {
+    if (sandboxEvaluation === null) return 50;
+    
+    // For mate scores, fill entire bar
+    if (Math.abs(sandboxEvaluation) >= 999999) {
+      return sandboxEvaluation > 0 ? 100 : 0;
+    }
+    
+    // Convert centipawns to percentage with logarithmic scale
+    const clampedEval = Math.max(-500, Math.min(500, sandboxEvaluation));
+    const percentage = 50 + (clampedEval / 500) * 45; // 5-95% range
+    return Math.max(5, Math.min(95, percentage));
+  };
+
 
   return (
     <div className="game-container" data-testid="game-container">
@@ -598,20 +1009,76 @@ const GameContainer: React.FC = () => {
               />
             </div>
           )}
+          {gameMode === GameMode.SANDBOX && !showPostGameAnalysis && (
+            <div className="sandbox-evaluation-section">
+              <div className="evaluation-bar-container">
+                <h4>Position Evaluation</h4>
+                <div className="evaluation-bar">
+                  <div className="eval-bar-bg">
+                    <div className="black-section"></div>
+                    <div 
+                      className="white-section" 
+                      style={{ 
+                        height: `${getSandboxEvaluationPercentage()}%`,
+                        minHeight: getSandboxEvaluationPercentage() === 0 ? '0px' : '20px'
+                      }}
+                    >
+                      <div className="eval-score-text">
+                        {sandboxIsEvaluating && sandboxEvaluation === null ? (
+                          "..."
+                        ) : (
+                          formatSandboxEvaluation(sandboxEvaluation, sandboxMateInMoves)
+                        )}
+                      </div>
+                    </div>
+                    <div className="eval-bar-midline"></div>
+                  </div>
+                </div>
+                <div className="evaluation-info">
+                  {sandboxIsEvaluating ? (
+                    <small>Analyzing depth: {sandboxCurrentDepth}/20</small>
+                  ) : (
+                    <small>Depth: {sandboxCurrentDepth}</small>
+                  )}
+                </div>
+              </div>
+              <BestMoveDisplay
+                bestMoveUci={sandboxBestMove}
+                currentFen={sandboxIsNavigating ? sandboxNavigationGameState?.fen || null : gameState?.fen || null}
+                className="analysis"
+                principalVariation={sandboxPrincipalVariation}
+              />
+            </div>
+          )}
           <CanvasChessBoard 
-            gameState={showPostGameAnalysis ? analysisGameState : gameState}
-            boardState={showPostGameAnalysis ? analysisGameState?.board : gameState?.board}
-            onSquareClick={showPostGameAnalysis ? () => {} : handleSquareClick}
+            gameState={showPostGameAnalysis ? analysisGameState : 
+                      (gameMode === GameMode.SANDBOX && sandboxIsNavigating) ? sandboxNavigationGameState : gameState}
+            boardState={showPostGameAnalysis ? analysisGameState?.board : 
+                       (gameMode === GameMode.SANDBOX && sandboxIsNavigating) ? sandboxNavigationGameState?.board : gameState?.board}
+            onSquareClick={showPostGameAnalysis ? () => {} : 
+                          (gameMode === GameMode.SANDBOX && sandboxIsNavigating) ? handleSandboxNavigationSquareClick : handleSquareClick}
             selectedSquare={showPostGameAnalysis ? null : selectedSquare}
             validMoves={showPostGameAnalysis ? [] : validMoves}
-            checkSquare={showPostGameAnalysis ? null : getCheckSquare()}
+            checkSquare={showPostGameAnalysis ? null : 
+                        (gameMode === GameMode.SANDBOX && sandboxIsNavigating) ? null : getCheckSquare()}
             aiMoveSquare={showPostGameAnalysis ? null : aiMoveDestination}
             showStartingPosition={false} // Use actual game state instead
-            arrows={showPostGameAnalysis && bestMove ? [{ 
-              from: bestMove.substring(0, 2) as any, 
-              to: bestMove.substring(2, 4) as any, 
-              color: '#3498db' 
-            }] : []}
+            arrows={(() => {
+              if (showPostGameAnalysis && bestMove) {
+                return [{ 
+                  from: bestMove.substring(0, 2) as any, 
+                  to: bestMove.substring(2, 4) as any, 
+                  color: '#3498db' 
+                }];
+              } else if (gameMode === GameMode.SANDBOX && sandboxBestMove) {
+                return [{ 
+                  from: sandboxBestMove.substring(0, 2) as any, 
+                  to: sandboxBestMove.substring(2, 4) as any, 
+                  color: '#3498db' 
+                }];
+              }
+              return [];
+            })()}
           />
         </div>
         <GameControls 
@@ -626,9 +1093,10 @@ const GameContainer: React.FC = () => {
       </div>
       <MoveHistoryPanel 
         gameState={gameState}
-        isPostGameAnalysis={showPostGameAnalysis}
-        currentMoveIndex={analysisCurrentMoveIndex}
-        onMoveClick={showPostGameAnalysis ? goToAnalysisMove : undefined}
+        isPostGameAnalysis={showPostGameAnalysis || (gameMode === GameMode.SANDBOX)}
+        currentMoveIndex={showPostGameAnalysis ? analysisCurrentMoveIndex : sandboxCurrentMoveIndex}
+        onMoveClick={showPostGameAnalysis ? goToAnalysisMove : 
+                    (gameMode === GameMode.SANDBOX ? goToSandboxMove : undefined)}
       />
       
       <GameModeModal

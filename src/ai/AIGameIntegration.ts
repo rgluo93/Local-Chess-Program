@@ -59,7 +59,7 @@ export class AIGameIntegration {
    * Set game mode
    */
   async setGameMode(mode: GameMode): Promise<void> {
-    const validModes: GameMode[] = [GameMode.HUMAN_VS_HUMAN, GameMode.HUMAN_VS_AI, GameMode.AI_VS_AI];
+    const validModes: GameMode[] = [GameMode.HUMAN_VS_HUMAN, GameMode.HUMAN_VS_AI, GameMode.SANDBOX, GameMode.AI_VS_AI];
     
     if (!validModes.includes(mode)) {
       throw new Error('Invalid game mode');
@@ -68,7 +68,7 @@ export class AIGameIntegration {
     this.gameMode = mode;
 
     // If switching away from AI mode, stop any ongoing thinking
-    if (mode === GameMode.HUMAN_VS_HUMAN) {
+    if (mode === GameMode.HUMAN_VS_HUMAN || mode === GameMode.SANDBOX) {
       this.aiPlayer.stopThinking();
     }
 

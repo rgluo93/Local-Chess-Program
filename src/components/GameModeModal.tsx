@@ -90,6 +90,17 @@ export const GameModeModal: React.FC<GameModeModalProps> = ({
               </div>
             </div>
           </button>
+
+          <button
+            className="mode-button positive-action"
+            onClick={() => handleModeSelect(GameMode.SANDBOX)}
+          >
+            <div className="mode-icon">🔬</div>
+            <div className="mode-info">
+              <div className="mode-title">Sandbox</div>
+              <div className="mode-description">Analyze positions with full engine support</div>
+            </div>
+          </button>
         </div>
 
         <button className="modal-close-button" onClick={onClose}>

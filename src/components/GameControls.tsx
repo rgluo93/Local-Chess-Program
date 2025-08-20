@@ -35,12 +35,13 @@ const GameControls: React.FC<GameControlsProps> = ({
   // Resign button logic:
   // - In human vs AI mode: always allow resign when game is active (human can always resign)
   // - In human vs human mode: allow resign when game is active OR in check (but not when game is already over)
+  // - In sandbox mode: never allow resign (analysis only)
   // - Never allow resign when AI is thinking (to prevent conflicts)
-  const canResign = currentGame && !isGameOver && (currentGame.status === 'playing' || currentGame.status === 'check');
+  const canResign = currentGame && !isGameOver && gameMode !== GameMode.SANDBOX && (currentGame.status === 'playing' || currentGame.status === 'check');
   const resignDisabled = !canResign || isAIThinking;
 
   const handleNewGame = () => {
-    if (isGameOver || !currentGame) {
+    if (isGameOver || !currentGame || gameMode === GameMode.SANDBOX) {
       if (onNewGameClick) {
         onNewGameClick();
       }
@@ -108,8 +109,8 @@ const GameControls: React.FC<GameControlsProps> = ({
         <button 
           className="positive-action" 
           onClick={handleNewGame}
-          disabled={(!isGameOver && currentGame !== null) || isAIThinking}
-          title={isGameOver || !currentGame ? "Start a new game" : "Finish current game first"}
+          disabled={(!isGameOver && currentGame !== null && gameMode !== GameMode.SANDBOX) || isAIThinking}
+          title={isGameOver || !currentGame || gameMode === GameMode.SANDBOX ? "Start a new game" : "Finish current game first"}
         >
           <span data-testid="button-text-new-game">New Game</span>
         </button>
@@ -127,7 +128,7 @@ const GameControls: React.FC<GameControlsProps> = ({
             className="negative-action" 
             onClick={handleResign}
             disabled={resignDisabled}
-            title={!canResign ? "Cannot resign when game is not active" : isAIThinking ? "Cannot resign while AI is thinking" : gameMode === GameMode.HUMAN_VS_AI ? "Resign as human player" : "Resign the current game"}
+            title={gameMode === GameMode.SANDBOX ? "Resign disabled in sandbox mode" : !canResign ? "Cannot resign when game is not active" : isAIThinking ? "Cannot resign while AI is thinking" : gameMode === GameMode.HUMAN_VS_AI ? "Resign as human player" : "Resign the current game"}
           >
             <span data-testid="button-text-resign">Resign</span>
           </button>

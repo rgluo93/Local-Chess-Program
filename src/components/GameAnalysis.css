@@ -75,7 +75,7 @@
 
 .evaluation-bar-container {
   background: white;
-  border: 1px solid #ddd;
+  border: 2px solid var(--color-primary-brown);
   border-radius: 8px;
   padding: 1.5rem;
   text-align: center;

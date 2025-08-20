@@ -250,6 +250,8 @@ The chess program features a comprehensive game analysis interface that provides
 - **Progressive Updates**: Real-time evaluation updates from depth 1 to target depth
 - **Evaluation Types**: Centipawn scores and mate-in-X positions
 - **Perspective**: All evaluations shown from current player's perspective
+- **Best Move Display**: Shows current best move recommendation from engine
+- **Principal Variation**: Displays the main line of play from current position
 
 #### Visual Evaluation Bar
 - **Design**: Vertical evaluation bar with white/black sections
@@ -390,4 +392,257 @@ npm run build
 
 ---
 
-*Last updated: Three-fold repetition draw detection and evaluation bar game ending display features complete*
+## Sandbox Mode - Real-Time Analysis Environment
+
+### Overview
+The chess program features a revolutionary Sandbox Mode that provides real-time chess analysis capabilities during active gameplay. Unlike traditional post-game analysis, Sandbox Mode allows players to analyze positions, explore variations, and create branches while playing, offering an immersive learning and exploration experience.
+
+### Key Features
+
+#### Real-Time Analysis During Gameplay
+- **Live Evaluation**: Stockfish.js v10.0.2 engine provides continuous position evaluation
+- **Best Move Arrows**: Visual arrows showing the engine's recommended best move
+- **Principal Variation Display**: Shows the main line of play from the current position
+- **Evaluation Bar**: Real-time evaluation bar updates with each position change
+- **Multi-Depth Analysis**: Progressive analysis from depth 1 to 20 for comprehensive evaluation
+
+#### Interactive Move Navigation
+- **Keyboard Navigation**: Arrow keys (↑↓←→) for moving through game history
+- **Click Navigation**: Click any move in the move history to jump to that position
+- **Starting Position**: Navigate back to the initial board setup
+- **Historical Analysis**: Analyze any position in the game's history
+- **Seamless Transitions**: Smooth navigation without losing analysis context
+
+#### Branch Creation and Exploration
+- **Alternative Lines**: Play moves from any historical position to create new variations
+- **Move Truncation**: Automatically removes future moves when branching from past positions
+- **Position Restoration**: Uses orchestrator's undo/redo system for accurate position management
+- **State Persistence**: Maintains proper game state throughout branch exploration
+- **Incremental Navigation**: Efficient position changes using built-in orchestrator methods
+
+#### Advanced Analysis Features
+- **Continuous Evaluation**: Position evaluation updates in real-time as you navigate
+- **Move Validation**: All moves are validated before allowing branch creation
+- **Depth Progression**: Analysis depth increases progressively for better accuracy
+- **Turn-Based Perspective**: Evaluations always shown from current player's perspective
+- **Mate Detection**: Special handling for checkmate and stalemate positions
+
+### Technical Implementation
+
+#### Game Mode Integration
+```typescript
+// Sandbox mode added to GameMode enum
+export enum GameMode {
+  HUMAN_VS_HUMAN = 'human_vs_human',
+  HUMAN_VS_AI = 'human_vs_ai',
+  SANDBOX = 'sandbox'  // New analysis mode
+}
+```
+
+#### Core Components
+```
+src/components/
+├── GameContainer.tsx          # Sandbox state management and navigation
+├── GameContainer.css          # Sandbox-specific styling matching analysis interface
+├── GameModeSelector.tsx       # Sandbox mode selection with microscope icon
+├── GameModeModal.tsx          # Sandbox option in game mode selection
+└── GameControls.tsx           # Modified controls for sandbox mode
+
+src/ai/
+├── types/AITypes.ts          # Extended GameMode enum with SANDBOX
+└── AIGameIntegration.ts       # Sandbox mode support in AI system
+
+src/engine/
+└── GameStateManager.ts        # Sandbox mode handling in state management
+```
+
+#### Sandbox-Specific State Management
+```typescript
+// Comprehensive sandbox analysis state
+const [sandboxEvaluation, setSandboxEvaluation] = useState<number | null>(null);
+const [sandboxCurrentDepth, setSandboxCurrentDepth] = useState<number>(0);
+const [sandboxMateInMoves, setSandboxMateInMoves] = useState<number | null>(null);
+const [sandboxBestMove, setSandboxBestMove] = useState<string | null>(null);
+const [sandboxPrincipalVariation, setSandboxPrincipalVariation] = useState<string[]>([]);
+
+// Navigation and branching state
+const [sandboxCurrentMoveIndex, setSandboxCurrentMoveIndex] = useState<number>(0);
+const [sandboxNavigationFens, setSandboxNavigationFens] = useState<string[]>([]);
+const [sandboxIsNavigating, setSandboxIsNavigating] = useState<boolean>(false);
+```
+
+#### Branch Creation Algorithm
+```typescript
+// Robust position restoration using orchestrator's built-in methods
+const resetOrchestratorToBranchPoint = async (moves: Move[]) => {
+  const currentState = orchestrator.getGameState();
+  const currentMoveCount = currentState.gameState.moves.length;
+  
+  // Navigate backwards using undoMove for positions behind current
+  if (moves.length < currentMoveCount) {
+    const movesToUndo = currentMoveCount - moves.length;
+    for (let i = 0; i < movesToUndo; i++) {
+      await orchestrator.undoMove();
+    }
+  }
+  
+  // Navigate forwards using makeMove for positions ahead of current
+  else if (moves.length > currentMoveCount) {
+    for (let i = currentMoveCount; i < moves.length; i++) {
+      const move = moves[i];
+      await orchestrator.makeMove({ 
+        from: move.from, 
+        to: move.to, 
+        promotion: move.promotion 
+      });
+    }
+  }
+};
+```
+
+### User Interface Design
+
+#### Analysis Panel Layout
+- **Position**: Absolutely positioned evaluation panel on the left side of the chess board
+- **Styling**: Matches post-game analysis interface for consistency
+- **Evaluation Bar**: Vertical bar showing position evaluation with logarithmic scaling
+- **Best Move Display**: Shows engine's recommended move in algebraic notation
+- **Principal Variation**: Displays the main line as a sequence of moves
+- **Analysis Depth**: Shows current analysis depth and engine status
+
+#### Game Controls Modifications
+- **Resign Button**: Disabled in sandbox mode (analysis-only environment)
+- **New Game Button**: Always enabled for quick game resets
+- **Analysis Integration**: Seamless transition between sandbox and post-game analysis
+- **Mode Indicator**: Clear visual indication when in sandbox mode
+
+#### Visual Feedback
+- **Real-Time Updates**: All analysis information updates as positions change
+- **Smooth Transitions**: Animated evaluation bar changes
+- **Color Coding**: Evaluation colors match advantage/disadvantage
+- **Move Highlighting**: Current position highlighted in move history
+
+### Performance Optimizations
+
+#### Engine Management
+- **Dedicated Engine**: Separate Stockfish instance for sandbox analysis
+- **Progressive Analysis**: Depth increases incrementally for responsive feedback
+- **Web Worker Isolation**: Engine runs in background thread
+- **Memory Management**: Proper cleanup when exiting sandbox mode
+
+#### State Synchronization
+- **Incremental Updates**: Uses orchestrator's built-in undo/redo for efficiency
+- **FEN Caching**: Pre-calculated FEN strings for all historical positions
+- **Lazy Evaluation**: Analysis only runs when in sandbox mode
+- **Event Handling**: Optimized keyboard and mouse event processing
+
+#### Navigation Efficiency
+- **Batch Updates**: Efficient state updates during navigation
+- **Position Validation**: Quick validation of legal moves before branch creation
+- **Error Recovery**: Graceful handling of invalid positions or moves
+- **Memory Usage**: Minimal memory footprint for navigation history
+
+### Integration with Game Systems
+
+#### Orchestrator Integration
+- **State Management**: Full integration with ChessGameOrchestrator
+- **Move Processing**: Uses existing move validation and execution systems
+- **Undo/Redo System**: Leverages proven orchestrator undo/redo functionality
+- **Error Handling**: Consistent error handling across all components
+
+#### AI System Integration
+- **Engine Status**: Proper handling of AI engine status in sandbox mode
+- **Move Generation**: No AI moves generated in sandbox mode
+- **Analysis Engine**: Separate engine instance for position analysis
+- **Resource Management**: Efficient allocation of computational resources
+
+#### UI Component Integration
+- **Chess Board**: Full integration with CanvasChessBoard component
+- **Move History**: Enhanced MoveHistoryPanel with navigation capabilities
+- **Game Container**: Comprehensive state management in main game container
+- **Modal System**: Consistent with existing modal and overlay systems
+
+### User Experience Features
+
+#### Keyboard Shortcuts
+- **↑/←**: Navigate to previous move
+- **↓/→**: Navigate to next move
+- **Home**: Jump to starting position
+- **End**: Jump to final position
+- **Escape**: Exit navigation mode
+
+#### Mouse Interactions
+- **Move Clicking**: Click any move to jump to that position
+- **Square Clicking**: Click empty squares to highlight or analyze
+- **Board Interaction**: Full chess board interaction for move exploration
+- **Scroll Support**: Mouse wheel navigation through moves
+
+#### Visual Indicators
+- **Current Position**: Clear highlighting of current position in move history
+- **Navigation Mode**: Visual feedback when in navigation mode
+- **Analysis Status**: Engine status and analysis progress indicators
+- **Branch Points**: Visual indication of positions where branches can be created
+
+### Error Handling and Recovery
+
+#### Position Management Errors
+- **Invalid FEN**: Graceful handling of corrupted position data
+- **Move Validation**: Comprehensive move validation before execution
+- **State Corruption**: Automatic recovery from inconsistent game states
+- **Engine Failures**: Fallback mechanisms for engine communication errors
+
+#### Navigation Errors
+- **Boundary Conditions**: Proper handling of navigation beyond game bounds
+- **Branch Creation**: Validation of branch points and move legality
+- **State Restoration**: Recovery from failed position restoration attempts
+- **Memory Issues**: Cleanup and recovery from memory-related problems
+
+### Development and Testing
+
+#### Test Coverage
+- **Unit Tests**: Comprehensive testing of sandbox-specific functionality
+- **Integration Tests**: Testing of sandbox mode with other game systems
+- **Performance Tests**: Analysis of navigation and analysis performance
+- **User Experience Tests**: Testing of keyboard and mouse interactions
+
+#### Debugging Features
+- **Console Logging**: Detailed logging of navigation and branching operations
+- **State Inspection**: Tools for inspecting sandbox state during development
+- **Performance Metrics**: Timing and memory usage analysis
+- **Error Reporting**: Comprehensive error reporting and recovery logging
+
+### Future Enhancements
+
+#### Advanced Analysis Features
+- **Multi-PV Support**: Multiple line analysis with best alternatives
+- **Opening Book**: Integration with opening theory database
+- **Endgame Tablebase**: Perfect play in endgame positions
+- **Position Annotations**: User-created position annotations and comments
+
+#### User Interface Improvements
+- **Customizable Layout**: User-configurable analysis panel positioning
+- **Analysis Export**: Export analysis results to PGN or other formats
+- **Variation Trees**: Visual representation of explored variations
+- **Analysis History**: History of analyzed positions and variations
+
+#### Performance Enhancements
+- **Analysis Caching**: Persistent caching of previously analyzed positions
+- **Parallel Analysis**: Multiple engine instances for faster analysis
+- **Cloud Integration**: Optional cloud-based analysis for deeper computation
+- **Mobile Optimization**: Touch-friendly interface for mobile devices
+
+### Development Commands
+```bash
+# Run development server with sandbox mode
+npm run dev
+
+# Test sandbox mode functionality
+npm test
+
+# Build with sandbox mode support
+npm run build
+```
+
+---
+
+*Last updated: Sandbox mode and enhanced analysis features with best move display and principal variation complete*

@@ -7,6 +7,7 @@ import type { Move } from '../types/Chess';
 export enum GameMode {
   HUMAN_VS_HUMAN = 'human_vs_human',
   HUMAN_VS_AI = 'human_vs_ai',
+  SANDBOX = 'sandbox',
   AI_VS_AI = 'ai_vs_ai' // For testing
 }
 

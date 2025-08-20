@@ -366,6 +366,10 @@ export class GameEngine {
     const move = this.chess.undo();
     if (move) {
       this.moveHistory.pop();
+      // Also remove the corresponding position from position history
+      if (this.positionHistory.length > 0) {
+        this.positionHistory.pop();
+      }
       return true;
     }
     return false;

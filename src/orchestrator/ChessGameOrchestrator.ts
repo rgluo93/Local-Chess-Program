@@ -212,8 +212,13 @@ export class ChessGameOrchestrator implements ChessGameOrchestratorAPI {
     const startTime = performance.now();
 
     try {
-      // Reset all components
-      this.gameEngine = new GameEngine(fen);
+      // Reset existing GameEngine instead of creating new one (preserves StateManager reference)
+      if (fen) {
+        this.gameEngine.loadFEN(fen);
+      } else {
+        this.gameEngine.reset();
+      }
+      
       this.stateManager.startNewGame();
       this.moveHistory.clear();
       
@@ -1425,7 +1430,7 @@ export class ChessGameOrchestrator implements ChessGameOrchestratorAPI {
       this.stateManager.setGameMode(mode);
       
       // Initialize AI if switching to AI mode
-      if (mode !== 'HUMAN_VS_HUMAN' && !this.aiIntegration.isReady()) {
+      if (mode !== GameMode.HUMAN_VS_HUMAN && mode !== GameMode.SANDBOX && !this.aiIntegration.isReady()) {
         await this.aiIntegration.initialize();
       }
       

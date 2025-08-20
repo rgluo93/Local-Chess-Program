@@ -8,6 +8,7 @@
 
 import { GameEngine } from './GameEngine';
 import { NotationGenerator } from './NotationGenerator';
+import { GameMode } from '../ai/types/AITypes';
 import type {
   Square,
   PieceColor,
@@ -609,7 +610,7 @@ export class GameStateManager {
       gameMode: mode,
       aiState: {
         ...this.appState.uiState.aiState,
-        engineStatus: mode === 'HUMAN_VS_HUMAN' ? 'offline' : 'ready'
+        engineStatus: (mode === GameMode.HUMAN_VS_HUMAN || mode === GameMode.SANDBOX) ? 'offline' : 'ready'
       }
     });
     this.persistState();

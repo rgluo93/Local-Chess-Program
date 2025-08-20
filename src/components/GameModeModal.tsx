@@ -57,8 +57,8 @@ export const GameModeModal: React.FC<GameModeModalProps> = ({
   const isAIDisabled = aiEngineStatus === 'error';
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-overlay">
+      <div className="modal-content">
         <h2 className="modal-title">Select Game Mode</h2>
         
         <div className="mode-buttons">
@@ -102,10 +102,6 @@ export const GameModeModal: React.FC<GameModeModalProps> = ({
             </div>
           </button>
         </div>
-
-        <button className="modal-close-button" onClick={onClose}>
-          Cancel
-        </button>
       </div>
     </div>
   );

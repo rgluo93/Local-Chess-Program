@@ -8,11 +8,7 @@
   border-radius: 8px;
   padding: 1rem;
   text-align: center;
-  width: 120px;
-  position: absolute;
-  left: -140px;
-  top: 0;
-  z-index: 1;
+  width: 160px;
 }
 
 .post-game-evaluation-bar-container h4 {
@@ -119,7 +115,7 @@
   font-weight: bold;
   font-family: 'Courier New', monospace;
   text-align: center;
-  writing-mode: vertical-lr;
+  writing-mode: sideways-lr;
   text-orientation: mixed;
   display: flex;
   align-items: center;

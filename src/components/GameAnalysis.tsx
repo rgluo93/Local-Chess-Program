@@ -6,6 +6,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Chess } from 'chess.js';
 import { CanvasChessBoard } from './CanvasChessBoard';
 import { StockfishEngine } from '../ai/StockfishEngine';
+import BestMoveDisplay from './BestMoveDisplay';
 import type { GameState, Move } from '../types/Chess';
 import './GameAnalysis.css';
 
@@ -32,6 +33,7 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, gameResult, gameStatus
   const [finalMateInMoves, setFinalMateInMoves] = useState<number | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [moveFens, setMoveFens] = useState<string[]>([]);
+  const [bestMove, setBestMove] = useState<string | null>(null);
   const engineRef = useRef<StockfishEngine | null>(null);
   const [engineReady, setEngineReady] = useState<boolean>(false);
   const needsInitialAnalysis = useRef<boolean>(true);
@@ -106,11 +108,12 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, gameResult, gameStatus
         await engine.initialize();
         
         // Set up real-time evaluation callback
-        engine.setEvaluationCallback((evaluation: number, depth: number, mateIn?: number) => {
+        engine.setEvaluationCallback((evaluation: number, depth: number, mateIn?: number, bestMoveUci?: string) => {
           console.log('📊 Received real-time evaluation:', evaluation, 'at depth:', depth, 'mate in:', mateIn);
           setEvaluation(evaluation);
           setCurrentDepth(depth);
           setMateInMoves(mateIn || null);
+          setBestMove(bestMoveUci || null);
           
           // Store final evaluation when we reach target depth
           if (depth === ANALYSIS_DEPTH) {
@@ -205,6 +208,7 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, gameResult, gameStatus
       setFinalEvaluation(null);
       setMateInMoves(null);
       setFinalMateInMoves(null);
+      setBestMove(null);
       
       console.log(`Evaluating position at depth ${ANALYSIS_DEPTH}:`, fen);
       await engineRef.current.setPosition(fen);
@@ -513,6 +517,11 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, gameResult, gameStatus
                 )}
               </div>
             </div>
+            <BestMoveDisplay
+              bestMoveUci={bestMove}
+              currentFen={moveFens[currentMoveIndex] || null}
+              className="analysis"
+            />
           </div>
           
           <div className="board-section">
@@ -525,6 +534,11 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, gameResult, gameStatus
               checkSquare={null}
               aiMoveSquare={null}
               showStartingPosition={false}
+              arrows={bestMove ? [{ 
+                from: bestMove.substring(0, 2) as any, 
+                to: bestMove.substring(2, 4) as any, 
+                color: '#3498db' 
+              }] : []}
             />
           </div>
           

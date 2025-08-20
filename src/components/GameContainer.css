@@ -25,3 +25,13 @@
   align-items: flex-start;
   gap: 20px;
 }
+
+.post-game-evaluation-section {
+  position: absolute;
+  left: -200px;
+  top: 0;
+  width: 180px;
+  padding: 1rem;
+  border-radius: 8px;
+  z-index: 1;
+}

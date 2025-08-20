@@ -9,6 +9,13 @@ import type { ChessBoard, PieceType, PieceColor, Square } from '../types/Chess';
 import type { GameState } from '../types/Chess';
 import './CanvasChessBoard.css';
 
+interface Arrow {
+  from: Square;
+  to: Square;
+  color?: string;
+  isKnightMove?: boolean;
+}
+
 export interface CanvasBoardProps {
   size?: number;
   showStartingPosition?: boolean;
@@ -19,6 +26,7 @@ export interface CanvasBoardProps {
   validMoves?: Square[];
   checkSquare?: Square | null;
   aiMoveSquare?: Square | null;
+  arrows?: Arrow[];
 }
 
 
@@ -35,7 +43,8 @@ export const CanvasChessBoard = React.forwardRef<HTMLCanvasElement, CanvasBoardP
   selectedSquare,
   validMoves = [],
   checkSquare = null,
-  aiMoveSquare = null
+  aiMoveSquare = null,
+  arrows = []
 }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const actualRef = ref || canvasRef;
@@ -244,9 +253,14 @@ export const CanvasChessBoard = React.forwardRef<HTMLCanvasElement, CanvasBoardP
       } else if (boardState) {
         drawBoardState(ctx, size, labelOffset, boardState);
       }
+      
+      // Draw arrows on top of pieces for better visibility
+      if (arrows.length > 0) {
+        drawArrows(ctx, size, labelOffset, arrows);
+      }
     }
 
-  }, [size, squareSize, labelOffset, canvasSize, imagesLoaded, showStartingPosition, boardState, gameState, selectedSquare, validMoves, checkSquare, aiMoveSquare]);
+  }, [size, squareSize, labelOffset, canvasSize, imagesLoaded, showStartingPosition, boardState, gameState, selectedSquare, validMoves, checkSquare, aiMoveSquare, arrows]);
 
 
   const drawBoard = (ctx: CanvasRenderingContext2D, boardSize: number, offset: number) => {
@@ -432,6 +446,170 @@ export const CanvasChessBoard = React.forwardRef<HTMLCanvasElement, CanvasBoardP
     const rankChar = (8 - rank).toString();
     
     return `${fileChar}${rankChar}` as Square;
+  };
+
+  // Helper function to convert square notation to canvas coordinates
+  const squareToCoordinates = (square: Square, boardSize: number, offset: number): { x: number; y: number } => {
+    const file = square.charCodeAt(0) - 'a'.charCodeAt(0); // a=0, b=1, etc.
+    const rank = parseInt(square[1]) - 1; // 1=0, 2=1, etc.
+    const squareSize = boardSize / 8;
+    
+    return {
+      x: offset + file * squareSize + squareSize / 2, // Center of square
+      y: offset + (7 - rank) * squareSize + squareSize / 2 // Center of square (flipped for display)
+    };
+  };
+
+  // Helper function to detect if a move is a knight move
+  const isKnightMove = (from: Square, to: Square): boolean => {
+    const fromFile = from.charCodeAt(0) - 'a'.charCodeAt(0);
+    const fromRank = parseInt(from[1]) - 1;
+    const toFile = to.charCodeAt(0) - 'a'.charCodeAt(0);
+    const toRank = parseInt(to[1]) - 1;
+    
+    const fileDiff = Math.abs(toFile - fromFile);
+    const rankDiff = Math.abs(toRank - fromRank);
+    
+    return (fileDiff === 2 && rankDiff === 1) || (fileDiff === 1 && rankDiff === 2);
+  };
+
+  // Draw arrows on the board
+  const drawArrows = (ctx: CanvasRenderingContext2D, boardSize: number, offset: number, arrows: Arrow[]) => {
+    arrows.forEach(arrow => {
+      const from = squareToCoordinates(arrow.from, boardSize, offset);
+      const to = squareToCoordinates(arrow.to, boardSize, offset);
+      const color = arrow.color || '#3498db'; // Default blue color
+      
+      const isKnight = arrow.isKnightMove || isKnightMove(arrow.from, arrow.to);
+      
+      if (isKnight) {
+        // Draw L-shaped arrow for knight moves
+        drawKnightArrow(ctx, from, to, color, boardSize, offset);
+      } else {
+        // Draw regular straight arrow
+        drawStraightArrow(ctx, from, to, color);
+      }
+    });
+  };
+
+  // Draw straight arrow
+  const drawStraightArrow = (ctx: CanvasRenderingContext2D, from: {x: number, y: number}, to: {x: number, y: number}, color: string) => {
+    // Calculate arrow properties
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const length = Math.sqrt(dx * dx + dy * dy);
+    const unitX = dx / length;
+    const unitY = dy / length;
+    
+    // Arrow dimensions
+    const arrowHeadLength = 20;
+    const arrowHeadWidth = 15;
+    const lineWidth = 8;
+    
+    // Calculate shaft end point (shortened to leave room for arrow head)
+    const shaftEndX = to.x - unitX * arrowHeadLength;
+    const shaftEndY = to.y - unitY * arrowHeadLength;
+    
+    // Draw arrow shaft
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = 'round';
+    ctx.globalAlpha = 0.9;
+    
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(shaftEndX, shaftEndY);
+    ctx.stroke();
+    
+    // Draw arrow head pointing exactly at target square center
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(to.x, to.y); // Point at exact square center
+    ctx.lineTo(
+      to.x - unitX * arrowHeadLength - unitY * arrowHeadWidth,
+      to.y - unitY * arrowHeadLength + unitX * arrowHeadWidth
+    );
+    ctx.lineTo(
+      to.x - unitX * arrowHeadLength + unitY * arrowHeadWidth,
+      to.y - unitY * arrowHeadLength - unitX * arrowHeadWidth
+    );
+    ctx.closePath();
+    ctx.fill();
+    
+    ctx.restore();
+  };
+
+  // Draw L-shaped arrow for knight moves
+  const drawKnightArrow = (ctx: CanvasRenderingContext2D, from: {x: number, y: number}, to: {x: number, y: number}, color: string, boardSize: number, offset: number) => {
+    const squareSize = boardSize / 8;
+    
+    // Determine if it's a 2+1 or 1+2 move
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    
+    // Calculate intermediate point for L-shape
+    let midX: number, midY: number;
+    
+    if (Math.abs(dx) > Math.abs(dy)) {
+      // 2-square horizontal, 1-square vertical
+      midX = from.x + (dx > 0 ? 2 * squareSize : -2 * squareSize);
+      midY = from.y;
+    } else {
+      // 1-square horizontal, 2-square vertical  
+      midX = from.x;
+      midY = from.y + (dy > 0 ? 2 * squareSize : -2 * squareSize);
+    }
+    
+    // Arrow dimensions
+    const arrowHeadLength = 20;
+    const arrowHeadWidth = 15;
+    const lineWidth = 8;
+    
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = 'round';
+    ctx.globalAlpha = 0.9;
+    
+    // Draw first segment
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(midX, midY);
+    ctx.stroke();
+    
+    // Calculate final segment end point (shortened for arrow head)
+    const finalDx = to.x - midX;
+    const finalDy = to.y - midY;
+    const finalLength = Math.sqrt(finalDx * finalDx + finalDy * finalDy);
+    const finalUnitX = finalDx / finalLength;
+    const finalUnitY = finalDy / finalLength;
+    
+    const shaftEndX = to.x - finalUnitX * arrowHeadLength;
+    const shaftEndY = to.y - finalUnitY * arrowHeadLength;
+    
+    // Draw second segment  
+    ctx.beginPath();
+    ctx.moveTo(midX, midY);
+    ctx.lineTo(shaftEndX, shaftEndY);
+    ctx.stroke();
+    
+    // Draw arrow head pointing exactly at target square center
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(to.x, to.y); // Point at exact square center
+    ctx.lineTo(
+      to.x - finalUnitX * arrowHeadLength - finalUnitY * arrowHeadWidth,
+      to.y - finalUnitY * arrowHeadLength + finalUnitX * arrowHeadWidth
+    );
+    ctx.lineTo(
+      to.x - finalUnitX * arrowHeadLength + finalUnitY * arrowHeadWidth,
+      to.y - finalUnitY * arrowHeadLength - finalUnitX * arrowHeadWidth
+    );
+    ctx.closePath();
+    ctx.fill();
+    
+    ctx.restore();
   };
 
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {

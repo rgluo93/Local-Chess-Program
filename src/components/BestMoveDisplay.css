@@ -1,0 +1,53 @@
+/**
+ * BestMoveDisplay Component Styles
+ */
+
+.best-move-display {
+  background-color: white;
+  border: 2px solid var(--color-primary-brown);
+  border-radius: 8px;
+  padding: 10px 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  min-width: 160px;
+  width: 160px;
+}
+
+/* Analysis interface positioning - underneath evaluation bar */
+.best-move-display.analysis {
+  margin-top: 8px;
+}
+
+/* Post-game positioning - underneath evaluation bar */
+.best-move-display.post-game {
+  margin-top: 8px;
+}
+
+.best-move-title {
+  font-size: var(--font-size-status);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary-brown);
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid var(--color-primary-brown);
+}
+
+.best-move-notation {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 4px 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.best-move-notation .move-number {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary-brown);
+  margin-right: 10px;
+}
+
+.best-move-notation .move-text {
+  color: var(--color-primary-brown);
+  font-family: 'Courier New', monospace;
+}

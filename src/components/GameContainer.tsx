@@ -10,6 +10,7 @@ import GameControls from './GameControls';
 import MoveHistoryPanel from './MoveHistoryPanel';
 import GameAnalysis from './GameAnalysis';
 import EvaluationBar from './EvaluationBar';
+import BestMoveDisplay from './BestMoveDisplay';
 import { GameModeModal } from './GameModeModal';
 import { ChessGameOrchestrator } from '../orchestrator/ChessGameOrchestrator';
 import { StockfishEngine } from '../ai/StockfishEngine';
@@ -50,6 +51,7 @@ const GameContainer: React.FC = () => {
   const [currentDepth, setCurrentDepth] = useState<number>(0);
   const [mateInMoves, setMateInMoves] = useState<number | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [bestMove, setBestMove] = useState<string | null>(null);
   const engineRef = useRef<StockfishEngine | null>(null);
   const [engineReady, setEngineReady] = useState<boolean>(false);
 
@@ -61,10 +63,11 @@ const GameContainer: React.FC = () => {
         await engine.initialize();
         
         // Set up real-time evaluation callback
-        engine.setEvaluationCallback((evaluation: number, depth: number, mateIn?: number) => {
+        engine.setEvaluationCallback((evaluation: number, depth: number, mateIn?: number, bestMoveUci?: string) => {
           setEvaluation(evaluation);
           setCurrentDepth(depth);
           setMateInMoves(mateIn || null);
+          setBestMove(bestMoveUci || null);
         });
         
         engineRef.current = engine;
@@ -181,7 +184,7 @@ const GameContainer: React.FC = () => {
     } catch (error) {
       console.error('Error enabling post-game analysis:', error);
     }
-  }, [engineReady]);
+  }, [engineReady, chessForAnalysis]);
 
   // Evaluate specific position with Stockfish
   const evaluatePosition = async (fen: string) => {
@@ -194,6 +197,7 @@ const GameContainer: React.FC = () => {
       setEvaluation(null);
       setCurrentDepth(0);
       setMateInMoves(null);
+      setBestMove(null);
       
       await engineRef.current.setPosition(fen);
       await engineRef.current.evaluatePosition(20);
@@ -203,6 +207,7 @@ const GameContainer: React.FC = () => {
       setEvaluation(null);
       setCurrentDepth(0);
       setMateInMoves(null);
+      setBestMove(null);
     } finally {
       setIsEvaluating(false);
     }
@@ -568,17 +573,24 @@ const GameContainer: React.FC = () => {
       <div className="game-main">
         <div className="board-container" style={{ position: 'relative' }}>
           {showPostGameAnalysis && (
-            <EvaluationBar
-              evaluation={evaluation}
-              mateInMoves={mateInMoves}
-              currentDepth={currentDepth}
-              isEvaluating={isEvaluating}
-              gameState={analysisGameState}
-              gameResult={gameState?.result}
-              gameStatus={gameState?.status}
-              drawReason={orchestratorReady && orchestrator ? orchestrator.getDrawReason() || undefined : undefined}
-              isAtFinalPosition={analysisCurrentMoveIndex === analysisMoves.length}
-            />
+            <div className="post-game-evaluation-section">
+              <EvaluationBar
+                evaluation={evaluation}
+                mateInMoves={mateInMoves}
+                currentDepth={currentDepth}
+                isEvaluating={isEvaluating}
+                gameState={analysisGameState}
+                gameResult={gameState?.result}
+                gameStatus={gameState?.status}
+                drawReason={orchestratorReady && orchestrator ? orchestrator.getDrawReason() || undefined : undefined}
+                isAtFinalPosition={analysisCurrentMoveIndex === analysisMoves.length}
+              />
+              <BestMoveDisplay
+                bestMoveUci={bestMove}
+                currentFen={analysisGameState?.fen || null}
+                className="post-game"
+              />
+            </div>
           )}
           <CanvasChessBoard 
             gameState={showPostGameAnalysis ? analysisGameState : gameState}
@@ -589,6 +601,11 @@ const GameContainer: React.FC = () => {
             checkSquare={showPostGameAnalysis ? null : getCheckSquare()}
             aiMoveSquare={showPostGameAnalysis ? null : aiMoveDestination}
             showStartingPosition={false} // Use actual game state instead
+            arrows={showPostGameAnalysis && bestMove ? [{ 
+              from: bestMove.substring(0, 2) as any, 
+              to: bestMove.substring(2, 4) as any, 
+              color: '#3498db' 
+            }] : []}
           />
         </div>
         <GameControls 

@@ -67,7 +67,7 @@
 }
 
 .evaluation-section {
-  flex: 0 0 200px;
+  flex: 0 0 240px;
   padding: 2rem;
   background-color: #fafafa;
   border-right: 1px solid #ddd;
@@ -79,6 +79,7 @@
   border-radius: 8px;
   padding: 1.5rem;
   text-align: center;
+  width: 160px;
 }
 
 .evaluation-bar-container h4 {

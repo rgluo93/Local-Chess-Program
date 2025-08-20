@@ -34,6 +34,7 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, gameResult, gameStatus
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [moveFens, setMoveFens] = useState<string[]>([]);
   const [bestMove, setBestMove] = useState<string | null>(null);
+  const [principalVariation, setPrincipalVariation] = useState<string[]>([]);
   const engineRef = useRef<StockfishEngine | null>(null);
   const [engineReady, setEngineReady] = useState<boolean>(false);
   const needsInitialAnalysis = useRef<boolean>(true);
@@ -108,12 +109,13 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, gameResult, gameStatus
         await engine.initialize();
         
         // Set up real-time evaluation callback
-        engine.setEvaluationCallback((evaluation: number, depth: number, mateIn?: number, bestMoveUci?: string) => {
+        engine.setEvaluationCallback((evaluation: number, depth: number, mateIn?: number, bestMoveUci?: string, pv?: string[]) => {
           console.log('📊 Received real-time evaluation:', evaluation, 'at depth:', depth, 'mate in:', mateIn);
           setEvaluation(evaluation);
           setCurrentDepth(depth);
           setMateInMoves(mateIn || null);
           setBestMove(bestMoveUci || null);
+          setPrincipalVariation(pv || []);
           
           // Store final evaluation when we reach target depth
           if (depth === ANALYSIS_DEPTH) {
@@ -209,6 +211,7 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, gameResult, gameStatus
       setMateInMoves(null);
       setFinalMateInMoves(null);
       setBestMove(null);
+      setPrincipalVariation([]);
       
       console.log(`Evaluating position at depth ${ANALYSIS_DEPTH}:`, fen);
       await engineRef.current.setPosition(fen);
@@ -223,6 +226,7 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, gameResult, gameStatus
       setFinalEvaluation(null);
       setMateInMoves(null);
       setFinalMateInMoves(null);
+      setPrincipalVariation([]);
     } finally {
       setIsEvaluating(false);
     }
@@ -521,6 +525,7 @@ const GameAnalysis: React.FC<GameAnalysisProps> = ({ pgn, gameResult, gameStatus
               bestMoveUci={bestMove}
               currentFen={moveFens[currentMoveIndex] || null}
               className="analysis"
+              principalVariation={principalVariation}
             />
           </div>
           

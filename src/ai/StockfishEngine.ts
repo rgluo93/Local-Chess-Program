@@ -24,7 +24,7 @@ export class StockfishEngine {
   private thinkingMoves: ThinkingMove[] = [];
   private pendingCommands = new Map<string, { resolve: Function; reject: Function; timeout?: NodeJS.Timeout }>();
   private commandId = 0;
-  private evaluationCallback: ((evaluation: number, depth: number, mateIn?: number, bestMove?: string) => void) | null = null;
+  private evaluationCallback: ((evaluation: number, depth: number, mateIn?: number, bestMove?: string, principalVariation?: string[]) => void) | null = null;
 
   constructor() {
     // Constructor intentionally empty - initialization happens in initialize()
@@ -33,7 +33,7 @@ export class StockfishEngine {
   /**
    * Set callback function for real-time evaluation updates
    */
-  setEvaluationCallback(callback: (evaluation: number, depth: number, mateIn?: number, bestMove?: string) => void): void {
+  setEvaluationCallback(callback: (evaluation: number, depth: number, mateIn?: number, bestMove?: string, principalVariation?: string[]) => void): void {
     this.evaluationCallback = callback;
   }
 
@@ -504,7 +504,7 @@ export class StockfishEngine {
       
       console.log('📡 Sending centipawn evaluation to UI:', adjustedScore, 'at depth:', info.depth, 'current turn:', currentTurn, 'raw cp:', info.score.cp);
       const bestMove = info.pv && info.pv.length > 0 ? info.pv[0] : undefined;
-      this.evaluationCallback(adjustedScore, info.depth, undefined, bestMove);
+      this.evaluationCallback(adjustedScore, info.depth, undefined, bestMove, info.pv);
     } else if (this.evaluationCallback && info.depth && info.score?.mate !== undefined) {
       // Mate scores are relative to the current player to move
       // If it's white's turn: mate 5 = white mates in 5, mate -5 = black mates in 5
@@ -522,7 +522,7 @@ export class StockfishEngine {
       
       console.log('📡 Sending mate evaluation to UI:', mateScore, 'at depth:', info.depth, 'mate in:', Math.abs(info.score.mate), 'current turn:', currentTurn);
       const bestMove = info.pv && info.pv.length > 0 ? info.pv[0] : undefined;
-      this.evaluationCallback(mateScore, info.depth, Math.abs(info.score.mate), bestMove);
+      this.evaluationCallback(mateScore, info.depth, Math.abs(info.score.mate), bestMove, info.pv);
     }
     
     return info;

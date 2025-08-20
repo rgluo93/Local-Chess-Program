@@ -1,0 +1,146 @@
+/**
+ * PrincipalVariationModal Component Styles
+ * Styled exactly like MoveHistoryPanel for consistency
+ */
+
+.principal-variation-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.principal-variation-modal {
+  background-color: white;
+  border: 2px solid var(--color-primary-brown);
+  border-radius: 8px;
+  padding: 20px;
+  min-width: 350px;
+  max-width: 400px;
+  max-height: 500px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.panel-title {
+  font-size: var(--font-size-status);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary-brown);
+  margin: 0;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--color-primary-brown);
+  flex: 1;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--color-primary-brown);
+  cursor: pointer;
+  padding: 0;
+  margin-left: 15px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.close-button:hover {
+  background-color: rgba(62, 39, 35, 0.1);
+}
+
+.moves-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 0;
+  max-height: 300px;
+}
+
+.no-moves {
+  color: #999;
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}
+
+.move-pair {
+  display: flex;
+  padding: 5px 10px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  align-items: center;
+}
+
+.move-pair:hover {
+  background-color: rgba(62, 39, 35, 0.1);
+}
+
+.move-number {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary-brown);
+  margin-right: 10px;
+  min-width: 30px;
+}
+
+.white-move {
+  color: var(--color-primary-brown);
+  font-family: 'Courier New', monospace;
+  margin-right: 15px;
+  min-width: 60px;
+}
+
+.black-move {
+  color: var(--color-primary-brown);
+  font-family: 'Courier New', monospace;
+}
+
+/* Scrollbar styling */
+.moves-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.moves-list::-webkit-scrollbar-track {
+  background: rgba(62, 39, 35, 0.1);
+  border-radius: 4px;
+}
+
+.moves-list::-webkit-scrollbar-thumb {
+  background: var(--color-primary-brown);
+  border-radius: 4px;
+}
+
+.moves-list::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent-gold);
+}
+
+/* Variation info styling */
+.variation-info {
+  border-top: 2px solid var(--color-primary-brown);
+  padding-top: 15px;
+  margin-top: 15px;
+}
+
+.status-item {
+  font-size: var(--font-size-status);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary-brown);
+  margin-bottom: 8px;
+}

@@ -52,6 +52,7 @@ const GameContainer: React.FC = () => {
   const [mateInMoves, setMateInMoves] = useState<number | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [bestMove, setBestMove] = useState<string | null>(null);
+  const [principalVariation, setPrincipalVariation] = useState<string[]>([]);
   const engineRef = useRef<StockfishEngine | null>(null);
   const [engineReady, setEngineReady] = useState<boolean>(false);
 
@@ -63,11 +64,12 @@ const GameContainer: React.FC = () => {
         await engine.initialize();
         
         // Set up real-time evaluation callback
-        engine.setEvaluationCallback((evaluation: number, depth: number, mateIn?: number, bestMoveUci?: string) => {
+        engine.setEvaluationCallback((evaluation: number, depth: number, mateIn?: number, bestMoveUci?: string, pv?: string[]) => {
           setEvaluation(evaluation);
           setCurrentDepth(depth);
           setMateInMoves(mateIn || null);
           setBestMove(bestMoveUci || null);
+          setPrincipalVariation(pv || []);
         });
         
         engineRef.current = engine;
@@ -198,6 +200,7 @@ const GameContainer: React.FC = () => {
       setCurrentDepth(0);
       setMateInMoves(null);
       setBestMove(null);
+      setPrincipalVariation([]);
       
       await engineRef.current.setPosition(fen);
       await engineRef.current.evaluatePosition(20);
@@ -208,6 +211,7 @@ const GameContainer: React.FC = () => {
       setCurrentDepth(0);
       setMateInMoves(null);
       setBestMove(null);
+      setPrincipalVariation([]);
     } finally {
       setIsEvaluating(false);
     }
@@ -347,6 +351,7 @@ const GameContainer: React.FC = () => {
     setCurrentDepth(0);
     setMateInMoves(null);
     setIsEvaluating(false);
+    setPrincipalVariation([]);
     
     // Show modal to select new game mode
     setShowGameModeModal(true);
@@ -589,6 +594,7 @@ const GameContainer: React.FC = () => {
                 bestMoveUci={bestMove}
                 currentFen={analysisGameState?.fen || null}
                 className="post-game"
+                principalVariation={principalVariation}
               />
             </div>
           )}

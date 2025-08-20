@@ -2,17 +2,20 @@
  * BestMoveDisplay Component - Shows the engine's best move recommendation
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Chess } from 'chess.js';
+import PrincipalVariationModal from './PrincipalVariationModal';
 import './BestMoveDisplay.css';
 
 interface BestMoveDisplayProps {
   bestMoveUci: string | null;
   currentFen: string | null;
   className?: string;
+  principalVariation?: string[];
 }
 
-const BestMoveDisplay: React.FC<BestMoveDisplayProps> = ({ bestMoveUci, currentFen, className = '' }) => {
+const BestMoveDisplay: React.FC<BestMoveDisplayProps> = ({ bestMoveUci, currentFen, className = '', principalVariation = [] }) => {
+  const [showPVModal, setShowPVModal] = useState(false);
   // Helper function to convert UCI move to algebraic notation
   const uciToAlgebraic = (uciMove: string, fen: string): string => {
     if (!uciMove) return '';
@@ -69,14 +72,38 @@ const BestMoveDisplay: React.FC<BestMoveDisplayProps> = ({ bestMoveUci, currentF
     return null;
   }
 
+  const handleClick = () => {
+    if (principalVariation && principalVariation.length > 0) {
+      setShowPVModal(true);
+    }
+  };
+
+  const hasPrincipalVariation = principalVariation && principalVariation.length > 0;
+
   return (
-    <div className={`best-move-display ${className}`}>
-      <div className="best-move-title">Best Move</div>
-      <div className="best-move-notation">
-        <span className="move-number">{moveDisplay.moveNumber}</span>
-        <span className="move-text">{moveDisplay.move}</span>
+    <>
+      <div 
+        className={`best-move-display ${className} ${hasPrincipalVariation ? 'clickable' : ''}`}
+        onClick={handleClick}
+        title={hasPrincipalVariation ? "Click to view full principal variation" : undefined}
+      >
+        <div className="best-move-title">
+          Best Move
+        </div>
+        <div className="best-move-notation">
+          <span className="move-number">{moveDisplay.moveNumber}</span>
+          <span className="move-text">{moveDisplay.move}</span>
+        </div>
       </div>
-    </div>
+      
+      <PrincipalVariationModal
+        isOpen={showPVModal}
+        onClose={() => setShowPVModal(false)}
+        principalVariation={principalVariation}
+        currentFen={currentFen || ''}
+        title="Principal Variation"
+      />
+    </>
   );
 };
 

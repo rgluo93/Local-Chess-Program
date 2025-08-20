@@ -10,6 +10,17 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   min-width: 160px;
   width: 160px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.best-move-display.clickable {
+  cursor: pointer;
+}
+
+.best-move-display.clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  background-color: rgba(62, 39, 35, 0.05);
 }
 
 /* Analysis interface positioning - underneath evaluation bar */
@@ -50,4 +61,11 @@
 .best-move-notation .move-text {
   color: var(--color-primary-brown);
   font-family: 'Courier New', monospace;
+}
+
+.pv-indicator {
+  font-size: 0.8em;
+  color: #666;
+  font-weight: normal;
+  margin-left: 5px;
 }

@@ -36,7 +36,7 @@
   margin-bottom: 15px;
 }
 
-.panel-title {
+.principal-variation-modal .panel-title {
   font-size: var(--font-size-status);
   font-weight: var(--font-weight-bold);
   color: var(--color-primary-brown);

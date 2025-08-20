@@ -82,15 +82,15 @@ const BestMoveDisplay: React.FC<BestMoveDisplayProps> = ({ bestMoveUci, currentF
 
   return (
     <>
-      <div 
-        className={`best-move-display ${className} ${hasPrincipalVariation ? 'clickable' : ''}`}
-        onClick={handleClick}
-        title={hasPrincipalVariation ? "Click to view full principal variation" : undefined}
-      >
+      <div className={`best-move-display ${className}`}>
         <div className="best-move-title">
           Best Move
         </div>
-        <div className="best-move-notation">
+        <div 
+          className={`best-move-notation ${hasPrincipalVariation ? 'clickable' : ''}`}
+          onClick={handleClick}
+          title={hasPrincipalVariation ? "Click to view full principal variation" : undefined}
+        >
           <span className="move-number">{moveDisplay.moveNumber}</span>
           <span className="move-text">{moveDisplay.move}</span>
         </div>
